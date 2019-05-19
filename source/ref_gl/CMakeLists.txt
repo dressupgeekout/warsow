@@ -1,6 +1,6 @@
 project(ref_gl)
 
-include_directories(${JPEG_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${PNG_INCLUDE_DIR} ${SDL2_INCLUDE_DIR})
+include_directories(${JPEG_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${PNG_INCLUDE_DIR} ${SDL2_INCLUDE_DIR} ${X11_INCLUDE_DIR})
 
 file(GLOB REF_GL_HEADERS
     "*.h"
