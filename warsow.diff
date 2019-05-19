@@ -1,0 +1,2873 @@
+diff -ruNp warsow_21_sdk/source/README.md warsow/README.md
+--- warsow_21_sdk/source/README.md	Sat Mar 26 21:22:10 2016
++++ warsow/README.md	Fri May 17 14:43:36 2019
+@@ -8,7 +8,7 @@ qfusion is the id Tech 2 derived game engine powering 
+ ## Features (incomplete list)
+ 
+ - Fully open-source under the GPLv2 and easy to mod
+-- Runs on Linux, OS X, Windows and Android (in development)
++- Runs on *BSD, Linux, OS X, Windows, Solaris (in development) and Android (in development)
+ - Modern and fast OpenGL 3.0 and OpenGL ES 3.0 renderer, running in a dedicated program thread
+ - <a href="http://librocket.com/wiki/documentation">User Interface</a> based on XHTML/CSS standards with support for remote content
+ - Support for vertex and skeletal animation
+diff -ruNp warsow_21_sdk/source/libsrcs/angelscript/sdk/angelscript/projects/cmake/CMakeLists.txt warsow/libsrcs/angelscript/sdk/angelscript/projects/cmake/CMakeLists.txt
+--- warsow_21_sdk/source/libsrcs/angelscript/sdk/angelscript/projects/cmake/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/libsrcs/angelscript/sdk/angelscript/projects/cmake/CMakeLists.txt	Fri May 17 14:43:36 2019
+@@ -155,6 +155,3 @@ if(MSVC)
+ endif()
+ 
+ set(RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/../../bin)
+-
+-add_subdirectory(../../../samples/game/projects/cmake/ ./game)
+-
+diff -ruNp warsow_21_sdk/source/libsrcs/angelscript/sdk/angelscript/source/as_config.h warsow/libsrcs/angelscript/sdk/angelscript/source/as_config.h
+--- warsow_21_sdk/source/libsrcs/angelscript/sdk/angelscript/source/as_config.h	Sat Mar 26 21:22:10 2016
++++ warsow/libsrcs/angelscript/sdk/angelscript/source/as_config.h	Fri May 17 14:43:36 2019
+@@ -872,7 +872,7 @@
+ 		#endif
+ 
+ 	// Free BSD
+-	#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
++	#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__) || defined(__NetBSD__)
+ 		#define AS_BSD
+ 		#if (defined(i386) || defined(__i386) || defined(__i386__)) && !defined(__LP64__)
+ 			#undef COMPLEX_MASK
+diff -ruNp warsow_21_sdk/source/libsrcs/angelscript/sdk/angelscript/source/as_memory.cpp warsow/libsrcs/angelscript/sdk/angelscript/source/as_memory.cpp
+--- warsow_21_sdk/source/libsrcs/angelscript/sdk/angelscript/source/as_memory.cpp	Sat Mar 26 21:22:10 2016
++++ warsow/libsrcs/angelscript/sdk/angelscript/source/as_memory.cpp	Fri May 17 14:43:36 2019
+@@ -38,10 +38,6 @@
+ 
+ #include <stdlib.h>
+ 
+-#if !defined(__APPLE__) && !defined( __SNC__ ) && !defined( __ghs__ ) && !defined(__FreeBSD__)
+-#include <malloc.h>
+-#endif
+-
+ #include "as_config.h"
+ #include "as_memory.h"
+ #include "as_scriptnode.h"
+diff -ruNp warsow_21_sdk/source/source/CMakeLists.txt warsow/source/CMakeLists.txt
+--- warsow_21_sdk/source/source/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/CMakeLists.txt	Sun May 19 05:37:40 2019
+@@ -5,6 +5,8 @@ cmake_minimum_required(VERSION 2.8.12)
+ set(CMAKE_MODULE_PATH ${CMAKE_HOME_DIRECTORY}/cmake)
+ include(QfusionUtils)
+ 
++set(QFUSION_GAME "Warsow")
++
+ if (QFUSION_GAME)
+ 	if (${QFUSION_GAME} MATCHES "Warsow")
+ 		set(QFUSION_GAME_DIR basewsw)
+@@ -41,11 +43,10 @@ if (QFUSION_APPLICATION_VERSION_HEADER)
+ 	add_definitions(-DAPPLICATION_VERSION_HEADER=${QFUSION_APPLICATION_VERSION_HEADER})
+ endif()
+ 
+-option(USE_SDL2 "Build using SDL2" OFF)
+ option(GAME_MODULES_ONLY "Only build game modules" OFF)
+ 
+ # Windows specific settings
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
++if (WIN32)
+     set(QFUSION_WINDOWS_ARCH "x86")
+ 
+     if ((MINGW AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64") OR (CMAKE_SIZEOF_VOID_P EQUAL 8))
+@@ -69,27 +70,20 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+     add_definitions(-D_CRT_SECURE_NO_WARNINGS -DCURL_STATICLIB -DWIN32 -D_WINDOWS)
+ 
+     if (MSVC)
+-        set(CMAKE_LIBRARY_PATH "win32/${QFUSION_WINDOWS_ARCH}/lib/debug")
+-    else()
+-        set(CMAKE_LIBRARY_PATH "win32/${QFUSION_WINDOWS_ARCH}/lib/mingw")
+-    endif()
+-
+-    if (MSVC)
+         add_release_link_flags("/LTCG")
+         
+-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /W4 /Ob1 /GL /Ot")
+-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /W4")
+-        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MT /W4 /Ob1 /GL /Ot")
+-        set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MTd /W4")
+-        set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MT /W4")
+-        set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} /MT /W4")
+-        set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} /MT /W4")
+-        set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} /MT /W4")	
++        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD /W4 /Ob1 /GL /Ot")
++        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd /W4")
++        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MD /W4 /Ob1 /GL /Ot")
++        set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MDd /W4")
++        set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MD /W4")
++        set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} /MD /W4")
++        set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} /MD /W4")
++        set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} /MD /W4")	
+     endif()
+-endif()
+ 
+ # OS X specific settings
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
++elseif (APPLE)
+     set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD_64_BIT)")    # Compile only 64-bit version
+     set(CMAKE_OSX_SYSROOT "macosx")                            # Compile with latest available OS X sdk
+     set(CMAKE_XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "10.8") # Use 10.8 as deployment target
+@@ -98,19 +92,9 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+     set(CMAKE_FRAMEWORK_PATH "mac/Frameworks")
+     set(CMAKE_MACOSX_RPATH 1)
+     set(JPEG_NAMES libjpeg) # libjpeg.framework should be renamed to jpeg.framework to remove this hack
+-    set(USE_SDL2 1)
+ 
+-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-unused-function -fvisibility=hidden -Winvalid-pch")
+-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -D_DEBUG")
+-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fno-strict-aliasing -ffast-math -funroll-loops -msse2")
+-
+-    set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++0x")
+-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+-endif()
+-
+-# Linux or mingw specific settings
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
++# Unix specific settings
++else()
+     # If no build type was specified - use release build settings
+     if (NOT CMAKE_BUILD_TYPE)
+         set(CMAKE_BUILD_TYPE "Release")
+@@ -118,16 +102,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
+ 
+     add_definitions(-D_LARGEFILE64_SOURCE -D_LARGEFILE_SOURCE)
+ 
+-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pipe -Wall -Wno-unused-function -fvisibility=hidden -Winvalid-pch")
+-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -D_DEBUG")
+-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fno-strict-aliasing -ffast-math -funroll-loops -msse2 -O2")
+-
+-    set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++0x")
+-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+-
+-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE=500")
+-
+     # -Wl,--as-needed
+     add_common_link_flags("-Wl,--as-needed")
+ 
+@@ -142,6 +116,12 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
+     endif()
+ endif()
+ 
++if (UNIX)
++    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-unused-function -fvisibility=hidden -Winvalid-pch -Wpedantic -std=gnu11")
++    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-function -fvisibility=hidden -Winvalid-pch -Wpedantic -std=c++11")
++endif()
++
+ # Linux-only specific settings
+ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+     if (CMAKE_CROSSCOMPILING)
+@@ -171,61 +151,23 @@ if (NOT GAME_MODULES_ONLY)
+     find_package(Freetype REQUIRED)
+     find_package(JPEG REQUIRED)
+     find_package(PNG REQUIRED)
+-
+-    # We need SDL only on non-Windows platforms or when with SDL2-backend
+-    if (USE_SDL2 OR (${CMAKE_SYSTEM_NAME} MATCHES "Linux"))
+-        set(USE_SDL2 1)
+-        find_package(SDL2 REQUIRED)
++    if (NOT WIN32)
++        find_package(X11 REQUIRED)
++        find_package(OpenGL REQUIRED)
+     endif()
+-
+-    if (USE_SDL2)
+-        add_definitions(-DUSE_SDL2)
+-    endif()
++    find_package(SDL2 REQUIRED)
+ endif()
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
+-    # On Linux we build angelscript from source
+-    set(ANGELSCRIPT_DIR ${CMAKE_HOME_DIRECTORY}/../libsrcs/angelscript/sdk/angelscript)
+-    if (MINGW)
+-        set(ANGELSCRIPT_PROJECT_DIR ${ANGELSCRIPT_DIR}/projects/mingw)
+-    else()
+-        set(ANGELSCRIPT_PROJECT_DIR ${ANGELSCRIPT_DIR}/projects/gnuc)
+-    endif()
+-    set(ANGELSCRIPT_INCLUDE_DIR ${ANGELSCRIPT_DIR}/include/)
+-    set(ANGELSCRIPT_LIBRARY ${ANGELSCRIPT_DIR}/lib/libangelscript.a)
+-
+-    set(ANGELSCRIPT angelscript)
+-    add_custom_target(angelscript CXX=${CMAKE_CXX_COMPILER} AR=${CMAKE_AR} RANLIB=${CMAKE_RANLIB} CFLAGS=${CMAKE_C_FLAGS} CXXFLAGS=${CMAKE_CXX_FLAGS} make -C ${ANGELSCRIPT_PROJECT_DIR})
+-else()
+-    find_package(Angelscript REQUIRED)
+-endif()
+-
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
+-	if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+-		STRING(TOLOWER "win32_${QFUSION_WINDOWS_ARCH}.tar.gz" TAR_GZ_NAME)
+-	else()
+-		STRING(TOLOWER "${CMAKE_SYSTEM_NAME}_${CMAKE_SYSTEM_PROCESSOR}.tar.gz" TAR_GZ_NAME)
+-	endif()
+-	if (NOT QFUSION_TAR_GZ_OUTPUT_DIRECTORY)
+-		set(TAR_GZ_DIST "${QFUSION_CLIENT_NAME}_${TAR_GZ_NAME}")
+-	else()
+-		set(TAR_GZ_DIST "${QFUSION_TAR_GZ_OUTPUT_DIRECTORY}/${QFUSION_CLIENT_NAME}_${TAR_GZ_NAME}")
+-	endif()
+-	add_custom_target(tar_gz COMMAND ${CMAKE_COMMAND} -E tar "cfvz" ${TAR_GZ_DIST} "${CMAKE_HOME_DIRECTORY}/build/")
+-	add_dependencies(tar_gz ${QFUSION_CLIENT_NAME} game ${QFUSION_SERVER_NAME} ${QFUSION_TVSERVER_NAME})
+-endif()
+-
+-# We build libRocket from source
++# We build angelscript and libRocket from source
++set(ANGELSCRIPT_DIR ${CMAKE_HOME_DIRECTORY}/../libsrcs/angelscript/sdk/angelscript)
++set(ANGELSCRIPT_INCLUDE_DIR ${ANGELSCRIPT_DIR}/include/)
++add_subdirectory(${ANGELSCRIPT_DIR}/projects/cmake ${ANGELSCRIPT_DIR}/lib/)
+ set(LIBROCKET_DIR ${CMAKE_HOME_DIRECTORY}/../libsrcs/libRocket/libRocket)
+ set(LIBROCKET_INCLUDE_DIR ${LIBROCKET_DIR}/Include)
+ set(LIBROCKET_SOURCE_DIR ${LIBROCKET_DIR}/Source)
+ 
+ if (NOT GAME_MODULES_ONLY)
+-    if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+-        set(CMAKE_EXECUTABLE_SUFFIX "_${QFUSION_WINDOWS_ARCH}${CMAKE_EXECUTABLE_SUFFIX}")
+-        set(CMAKE_SHARED_LIBRARY_PREFIX "")
+-        set(CMAKE_SHARED_LIBRARY_SUFFIX "_${QFUSION_WINDOWS_ARCH}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+-
++    if (WIN32)
+         find_windows_release_libs(ZLIB_LIBRARY)
+         find_windows_release_libs(JPEG_LIBRARIES)
+         find_windows_release_libs(PNG_LIBRARIES)
+@@ -239,40 +181,13 @@ if (NOT GAME_MODULES_ONLY)
+     endif()
+ endif()
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux") # Do not add 'OR MINGW' here - we need to use suffix-prefix settings from Windows
+-    set(CURL_LIBRARY "")
+-    add_definitions(-DLIBCURL_RUNTIME)
+-
+-    set(JPEG_LIBRARIES "")
+-    add_definitions(-DLIBJPEG_RUNTIME)
+-
+-    set(PNG_LIBRARIES "")
+-    add_definitions(-DLIBPNG_RUNTIME)
+-
+-    set(OGG_LIBRARY "")
+-    add_definitions(-DOGGLIB_RUNTIME)
+-
+-    set(VORBIS_LIBRARIES "")
+-    add_definitions(-DVORBISLIB_RUNTIME)
+-
+-    set(THEORA_LIBRARIES "")
+-    add_definitions(-DTHEORALIB_RUNTIME)
+-
+-    set(FREETYPE_LIBRARIES "")
+-    add_definitions(-DFREETYPELIB_RUNTIME)
+-
+-    set(ZLIB_LIBRARY "")
+-    add_definitions(-DZLIB_RUNTIME)
+-
+-    set(CMAKE_EXECUTABLE_SUFFIX ".${CMAKE_SYSTEM_PROCESSOR}${CMAKE_EXECUTABLE_SUFFIX}")
+-    set(CMAKE_SHARED_LIBRARY_SUFFIX "_${CMAKE_SYSTEM_PROCESSOR}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+-endif()
+-
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+-    set(CMAKE_SHARED_LIBRARY_SUFFIX "_mac${CMAKE_SHARED_LIBRARY_SUFFIX}")
+-
+-    capitalize(QFUSION_CLIENT_NAME)
+-endif()
++add_definitions(-DBUILDSTRING="${CMAKE_SYSTEM_NAME}")
++add_definitions(-DOSNAME="${CMAKE_SYSTEM_NAME}")
++add_definitions(-DCPUSTRING="${CMAKE_SYSTEM_PROCESSOR}")
++add_definitions(-DLIB_DIRECTORY="libs")
++add_definitions(-DLIB_PREFIX="${CMAKE_SHARED_LIBRARY_PREFIX}")
++add_definitions(-DLIB_SUFFIX="${CMAKE_SHARED_LIBRARY_SUFFIX}")
++add_definitions(-DDATADIR="${CMAKE_INSTALL_PREFIX}/share/${QFUSION_CLIENT_NAME}")
+ 
+ add_subdirectory(angelwrap)
+ add_subdirectory(cgame)
+diff -ruNp warsow_21_sdk/source/source/angelwrap/CMakeLists.txt warsow/source/angelwrap/CMakeLists.txt
+--- warsow_21_sdk/source/source/angelwrap/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/angelwrap/CMakeLists.txt	Fri May 17 14:43:38 2019
+@@ -15,17 +15,10 @@ file(GLOB angelwrap_SOURCES
+     "../gameshared/q_*.c"
+ )
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+-	set(ANGELWRAP_PLATFORM_LIBRARIES "pthread")
+-else ()
+-        set(ANGELWRAP_PLATFORM_LIBRARIES "")
++if (UNIX)
++	set(ANGELWRAP_PLATFORM_LIBRARIES pthread)
+ endif()
+ 
+ add_library(angelwrap SHARED ${angelwrap_SOURCES} ${angelwrap_HEADERS})
+-target_link_libraries(angelwrap PRIVATE ${ANGELSCRIPT_LIBRARY} ${ANGELWRAP_PLATFORM_LIBRARIES})
++target_link_libraries(angelwrap PRIVATE angelscript ${ANGELWRAP_PLATFORM_LIBRARIES})
+ qf_set_output_dir(angelwrap libs)
+-
+-# TODO: Remove this hack from here
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
+-    add_dependencies(angelwrap ${ANGELSCRIPT})
+-endif()
+diff -ruNp warsow_21_sdk/source/source/cin/CMakeLists.txt warsow/source/cin/CMakeLists.txt
+--- warsow_21_sdk/source/source/cin/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/cin/CMakeLists.txt	Fri May 17 14:43:38 2019
+@@ -12,10 +12,8 @@ file(GLOB CIN_SOURCES
+     "../gameshared/q_*.c"
+ )
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+-        set(CIN_PLATFORM_LIBRARIES "m")
+-else ()
+-        set(CIN_PLATFORM_LIBRARIES "")
++if (UNIX)
++        set(CIN_PLATFORM_LIBRARIES m)
+ endif()
+ 
+ add_library(cin SHARED ${CIN_SOURCES} ${CIN_HEADERS})
+diff -ruNp warsow_21_sdk/source/source/cin/cin_theora.c warsow/source/cin/cin_theora.c
+--- warsow_21_sdk/source/source/cin/cin_theora.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/cin/cin_theora.c	Fri May 17 14:43:38 2019
+@@ -68,38 +68,6 @@ typedef struct
+ 
+ static void *oggLibrary;
+ 
+-#ifdef OGGLIB_RUNTIME
+-
+-static int (*qogg_sync_init)(ogg_sync_state *);
+-static int (*qogg_sync_clear)(ogg_sync_state *);
+-static char *(*qogg_sync_buffer)(ogg_sync_state *, long);
+-static int (*qogg_sync_wrote)(ogg_sync_state *, long);
+-static int (*qogg_sync_pageout)(ogg_sync_state *, ogg_page *);
+-static int (*qogg_stream_init)(ogg_stream_state *, int);
+-static int (*qogg_stream_clear)(ogg_stream_state *);
+-static int (*qogg_stream_pagein)(ogg_stream_state *, ogg_page *);
+-static int (*qogg_stream_packetout)(ogg_stream_state *, ogg_packet *);
+-static int (*qogg_page_bos)(const ogg_page *);
+-static int (*qogg_page_serialno)(const ogg_page *);
+-
+-static dllfunc_t oggfuncs[] =
+-{
+-	{ "ogg_sync_init", ( void **)&qogg_sync_init },
+-	{ "ogg_sync_clear", ( void **)&qogg_sync_clear },
+-	{ "ogg_sync_buffer", ( void **)&qogg_sync_buffer },
+-	{ "ogg_sync_wrote", ( void **)&qogg_sync_wrote },
+-	{ "ogg_sync_pageout", ( void **)&qogg_sync_pageout },
+-	{ "ogg_stream_init", ( void **)&qogg_stream_init },
+-	{ "ogg_stream_clear", ( void **)&qogg_stream_clear },
+-	{ "ogg_stream_pagein", ( void **)&qogg_stream_pagein },
+-	{ "ogg_stream_packetout", ( void **)&qogg_stream_packetout },
+-	{ "ogg_page_bos", ( void **)&qogg_page_bos },
+-	{ "ogg_page_serialno", ( void **)&qogg_page_serialno },
+-	{ NULL, NULL },
+-};
+-
+-#else
+-
+ #define qogg_sync_init ogg_sync_init
+ #define qogg_sync_clear ogg_sync_clear
+ #define qogg_sync_buffer ogg_sync_buffer
+@@ -112,46 +80,8 @@ static dllfunc_t oggfuncs[] =
+ #define qogg_page_bos ogg_page_bos
+ #define qogg_page_serialno ogg_page_serialno
+ 
+-#endif
+-
+ static void *vorbisLibrary;
+ 
+-#ifdef VORBISLIB_RUNTIME
+-
+-static int  (*qvorbis_block_init)(vorbis_dsp_state *v, vorbis_block *vb);
+-static int  (*qvorbis_block_clear)(vorbis_block *vb);
+-static void (*qvorbis_info_init)(vorbis_info *vi);
+-static void (*qvorbis_info_clear)(vorbis_info *vi);
+-static void (*qvorbis_comment_init)(vorbis_comment *vc);
+-static void (*qvorbis_comment_clear)(vorbis_comment *vc);
+-static void (*qvorbis_dsp_clear)(vorbis_dsp_state *v);
+-static int  (*qvorbis_synthesis_init)(vorbis_dsp_state *v, vorbis_info *vi);
+-static int  (*qvorbis_synthesis)(vorbis_block *vb, ogg_packet *op);
+-static int  (*qvorbis_synthesis_blockin)(vorbis_dsp_state *v, vorbis_block *vb);
+-static int  (*qvorbis_synthesis_pcmout)(vorbis_dsp_state *v, float ***pcm);
+-static int  (*qvorbis_synthesis_headerin)(vorbis_info *vi, vorbis_comment *vc, ogg_packet *op);
+-static int  (*qvorbis_synthesis_read)(vorbis_dsp_state *v, int samples);
+-
+-static dllfunc_t vorbisfuncs[] =
+-{
+-	{ "vorbis_block_init", ( void **)&qvorbis_block_init },
+-	{ "vorbis_block_clear", ( void **)&qvorbis_block_clear },
+-	{ "vorbis_info_init", ( void **)&qvorbis_info_init },
+-	{ "vorbis_info_clear", ( void **)&qvorbis_info_clear },
+-	{ "vorbis_comment_init", ( void **)&qvorbis_comment_init },
+-	{ "vorbis_comment_clear", ( void **)&qvorbis_comment_clear },
+-	{ "vorbis_dsp_clear", ( void **)&qvorbis_dsp_clear },
+-	{ "vorbis_synthesis_init", ( void **)&qvorbis_synthesis_init },
+-	{ "vorbis_synthesis", ( void **)&qvorbis_synthesis },
+-	{ "vorbis_synthesis_blockin", ( void **)&qvorbis_synthesis_blockin },
+-	{ "vorbis_synthesis_pcmout", ( void **)&qvorbis_synthesis_pcmout },
+-	{ "vorbis_synthesis_headerin", ( void **)&qvorbis_synthesis_headerin },
+-	{ "vorbis_synthesis_read", ( void **)&qvorbis_synthesis_read },
+-	{ NULL, NULL },
+-};
+-
+-#else
+-
+ #define qvorbis_block_init vorbis_block_init
+ #define qvorbis_block_clear vorbis_block_clear
+ #define qvorbis_info_init vorbis_info_init
+@@ -166,50 +96,8 @@ static dllfunc_t vorbisfuncs[] =
+ #define qvorbis_synthesis_headerin vorbis_synthesis_headerin
+ #define qvorbis_synthesis_read vorbis_synthesis_read
+ 
+-#endif
+-
+ static void *theoraLibrary;
+ 
+-#ifdef THEORALIB_RUNTIME
+-
+-static double (*qth_granule_time)(void *_encdec, ogg_int64_t _granpos);
+-static int (*qth_decode_ctl)(th_dec_ctx *_dec, int _req,void *_buf,size_t _buf_sz);
+-static int (*qth_packet_iskeyframe)(ogg_packet *_op);
+-static int (*qth_decode_headerin)(th_info *_info,th_comment *_tc, th_setup_info **_setup,ogg_packet *_op);
+-static int (*qth_decode_packetin)(th_dec_ctx *_dec, const ogg_packet *_op,ogg_int64_t *_granpos);
+-static int (*qth_packet_isheader)(ogg_packet *_op);
+-static int (*qth_decode_ycbcr_out)(th_dec_ctx *_dec, th_ycbcr_buffer _ycbcr);
+-static ogg_int64_t (*qth_granule_frame)(void *_encdec,ogg_int64_t _granpos);
+-static void (*qth_comment_init)(th_comment *_tc);
+-static void (*qth_comment_clear)(th_comment *_tc);
+-static void (*qth_info_init)(th_info *_info);
+-static void (*qth_info_clear)(th_info *_info);
+-static void (*qth_setup_free)(th_setup_info *_setup);
+-static th_dec_ctx *(*qth_decode_alloc)(const th_info *_info,const th_setup_info *_setup);
+-static void (*qth_decode_free)(th_dec_ctx *_dec);
+-
+-static dllfunc_t theorafuncs[] =
+-{
+-	{ "th_granule_time", ( void **)&qth_granule_time },
+-	{ "th_decode_ctl", ( void **)&qth_decode_ctl },
+-	{ "th_packet_iskeyframe", ( void **)&qth_packet_iskeyframe },
+-	{ "th_decode_headerin", ( void **)&qth_decode_headerin },
+-	{ "th_decode_packetin", ( void **)&qth_decode_packetin },
+-	{ "th_packet_isheader", ( void **)&qth_packet_isheader },
+-	{ "th_decode_ycbcr_out", ( void **)&qth_decode_ycbcr_out },
+-	{ "th_granule_frame", ( void **)&qth_granule_frame },
+-	{ "th_comment_init", ( void **)&qth_comment_init },
+-	{ "th_comment_clear", ( void **)&qth_comment_clear },
+-	{ "th_info_init", ( void **)&qth_info_init },
+-	{ "th_info_clear", ( void **)&qth_info_clear },
+-	{ "th_setup_free", ( void **)&qth_setup_free },
+-	{ "th_decode_alloc", ( void **)&qth_decode_alloc },
+-	{ "th_decode_free", ( void **)&qth_decode_free },
+-	{ NULL, NULL },
+-};
+-
+-#else
+-
+ #define qth_granule_time th_granule_time
+ #define qth_decode_ctl th_decode_ctl
+ #define qth_packet_iskeyframe th_packet_iskeyframe
+@@ -226,8 +114,6 @@ static dllfunc_t theorafuncs[] =
+ #define qth_decode_alloc th_decode_alloc
+ #define qth_decode_free th_decode_free
+ 
+-#endif
+-
+ // =============================================================================
+ 
+ /*
+@@ -235,10 +121,6 @@ static dllfunc_t theorafuncs[] =
+ */
+ static void Theora_UnloadOggLibrary( void )
+ {
+-#ifdef OGGLIB_RUNTIME
+-	if( oggLibrary )
+-		trap_UnloadLibrary( &oggLibrary );
+-#endif
+ 	oggLibrary = NULL;
+ }
+ 
+@@ -249,11 +131,7 @@ void Theora_LoadOggLibrary( void )
+ {
+ 	Theora_UnloadOggLibrary();
+ 
+-#ifdef OGGLIB_RUNTIME
+-	oggLibrary = trap_LoadLibrary( LIBOGG_LIBNAME, oggfuncs );
+-#else
+ 	oggLibrary = (void *)1;
+-#endif
+ }
+ 
+ /*
+@@ -261,10 +139,6 @@ void Theora_LoadOggLibrary( void )
+ */
+ static void Theora_UnloadVorbisLibrary( void )
+ {
+-#ifdef VORBISLIB_RUNTIME
+-	if( vorbisLibrary )
+-		trap_UnloadLibrary( &vorbisLibrary );
+-#endif
+ 	vorbisLibrary = NULL;
+ }
+ 
+@@ -275,11 +149,7 @@ void Theora_LoadVorbisLibrary( void )
+ {
+ 	Theora_UnloadVorbisLibrary();
+ 
+-#ifdef VORBISLIB_RUNTIME
+-	vorbisLibrary = trap_LoadLibrary( LIBVORBIS_LIBNAME, vorbisfuncs );
+-#else
+ 	vorbisLibrary = (void *)1;
+-#endif
+ }
+ 
+ /*
+@@ -287,10 +157,6 @@ void Theora_LoadVorbisLibrary( void )
+ */
+ void Theora_UnloadTheoraLibrary( void )
+ {
+-#ifdef VORBISLIB_RUNTIME
+-	if( theoraLibrary )
+-		trap_UnloadLibrary( &theoraLibrary );
+-#endif
+ 	theoraLibrary = NULL;
+ }
+ 
+@@ -299,11 +165,7 @@ void Theora_UnloadTheoraLibrary( void )
+ */
+ static void Theora_LoadTheoraLibrary( void )
+ {
+-#ifdef THEORALIB_RUNTIME
+-	theoraLibrary = trap_LoadLibrary( LIBTHEORA_LIBNAME, theorafuncs );
+-#else
+ 	theoraLibrary = (void *)1;
+-#endif
+ }
+ 
+ /*
+diff -ruNp warsow_21_sdk/source/source/client/CMakeLists.txt warsow/source/client/CMakeLists.txt
+--- warsow_21_sdk/source/source/client/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/client/CMakeLists.txt	Fri May 17 14:43:38 2019
+@@ -1,11 +1,7 @@
+ project(${QFUSION_CLIENT_NAME})
+ 
+-include_directories(${ZLIB_INCLUDE_DIR} ${CURL_INCLUDE_DIR})
++include_directories(${ZLIB_INCLUDE_DIR} ${SDL2_INCLUDE_DIR} ${CURL_INCLUDE_DIR})
+ 
+-if (USE_SDL2 OR (${CMAKE_SYSTEM_NAME} MATCHES "Linux"))
+-    include_directories(${SDL2_INCLUDE_DIR})
+-endif()
+-
+ if (NOT QFUSION_MAC_ICON)
+ 	set(QFUSION_MAC_ICON ../../icons/qfusion.icns)
+ endif()
+@@ -43,7 +39,7 @@ file(GLOB CLIENT_COMMON_SOURCES
+ 	"libmumblelink/*.c"
+ )
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
++if (WIN32)
+ 	file(GLOB CLIENT_PLATFORM_HEADERS
+ 		"../win32/resource.h"
+ 		"../win32/conproc.h"
+@@ -51,7 +47,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+ 		"../win32/win_input.h"
+ 	)
+ 
+-    if (USE_SDL2)
+         file(GLOB CLIENT_PLATFORM_SOURCES
+             "../win32/win_fs.c"
+             "../win32/win_net.c"
+@@ -72,36 +67,13 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+             "../win32/qfusion.rc"
+         )
+ 
+-        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} ${SDL2MAIN_LIBRARY} "ws2_32.lib" "winmm.lib")
+-    else()
+-        file(GLOB CLIENT_PLATFORM_SOURCES
+-            "../win32/win_fs.c"
+-            "../win32/win_lib.c"
+-            "../win32/win_net.c"
+-            "../win32/win_sys.c"
+-            "../win32/win_console.c"
+-            "../win32/win_clipboard.c"
+-            "../win32/win_time.c"
+-            "../win32/win_threads.c"
+-            "../null/sys_vfs_null.c"
++        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} ${SDL2MAIN_LIBRARY} ws2_32.lib winmm.lib)
+ 
+-            "../win32/win_client.c"
+-            "../win32/win_input.c"
+-            "../win32/win_vid.c"
+-            "../win32/conproc.c"
+-
+-            "../win32/qfusion.rc"
+-        )
+-
+-        set(CLIENT_PLATFORM_LIBRARIES "ws2_32.lib" "winmm.lib")
+-    endif()
+-
+     set(CLIENT_BINARY_TYPE WIN32)
+ 
+     set(BUNDLE_RESOURCES "")
+-endif()
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
++elseif (APPLE)
+ 	set(CLIENT_PLATFORM_HEADERS "")
+ 	
+     file(GLOB CLIENT_PLATFORM_SOURCES
+@@ -138,12 +110,10 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+ 			${QFUSION_DATA_DIR}/docs
+ 		)
+ 	endif()
+-endif()
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
++else()
+ 	set(CLIENT_PLATFORM_HEADERS "")
+ 
+-    if (USE_SDL2)
+         file(GLOB CLIENT_PLATFORM_SOURCES
+             "../unix/unix_fs.c"
+             "../unix/unix_net.c"
+@@ -162,29 +132,11 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+             "../sdl/sdl_client.c"
+         )
+ 
+-        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} "pthread" "m" "dl" "rt")
+-    else()
+-        file(GLOB CLIENT_PLATFORM_SOURCES
+-            "../unix/unix_fs.c"
+-            "../unix/unix_lib.c"
+-            "../unix/unix_net.c"
+-            "../unix/unix_sys.c"
+-            "../unix/unix_console.c"
+-            "../unix/unix_clipboard.c"
+-            "../unix/unix_time.c"
+-            "../unix/unix_threads.c"
+-            "../null/sys_vfs_null.c"
+-
+-            "../unix/keysym2ucs.c"
+-            "../unix/unix_client.c"
+-            "../unix/unix_input.c"
+-            "../unix/unix_vid.c"
+-
+-            "../sdl/sdl_input_joy.c"
+-        )
+-    
+-        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} "pthread" "dl" "m" "X11" "Xi" "Xext" "Xrandr" "rt")
+-    endif()
++        if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
++            set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} pthread m dl rt)
++        else()
++            set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} pthread m)
++        endif()
+     set(CLIENT_BINARY_TYPE "")
+ 
+     set(BUNDLE_RESOURCES "")
+@@ -193,7 +145,7 @@ endif()
+ add_executable(${QFUSION_CLIENT_NAME} ${CLIENT_BINARY_TYPE} ${CLIENT_HEADERS} ${CLIENT_PLATFORM_HEADERS} ${CLIENT_COMMON_SOURCES} ${CLIENT_PLATFORM_SOURCES} ${BUNDLE_RESOURCES})
+ add_dependencies(${QFUSION_CLIENT_NAME} angelwrap cgame cin ftlib game irc ref_gl snd_openal snd_qf steamlib ui)
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
++if (APPLE)
+     set_target_properties(${QFUSION_CLIENT_NAME} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${QFUSION_MAC_INFO_PLIST})
+     set_target_properties(${QFUSION_CLIENT_NAME} PROPERTIES XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS "@executable_path/../Frameworks @executable_path/../Resources/base @executable_path/../Resources/libs")
+     set_source_files_properties(${QFUSION_MAC_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+diff -ruNp warsow_21_sdk/source/source/client/cin.c warsow/source/client/cin.c
+--- warsow_21_sdk/source/source/client/cin.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/client/cin.c	Fri May 17 14:43:38 2019
+@@ -146,7 +146,7 @@ void CIN_LoadLibrary( bool verbose )
+ 	funcs[0].name = "GetCinematicsAPI";
+ 	funcs[0].funcPointer = ( void ** ) &GetCinematicsAPI;
+ 	funcs[1].name = NULL;
+-	cin_libhandle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "cin_" ARCH LIB_SUFFIX, funcs );
++	cin_libhandle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "cin" LIB_SUFFIX, funcs );
+ 
+ 	if( cin_libhandle )
+ 	{
+diff -ruNp warsow_21_sdk/source/source/client/cl_sound.c warsow/source/client/cl_sound.c
+--- warsow_21_sdk/source/source/client/cl_sound.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/client/cl_sound.c	Fri May 17 14:43:38 2019
+@@ -136,9 +136,9 @@ static bool CL_SoundModule_Load( const char *name, sou
+ 	if( verbose )
+ 		Com_Printf( "Loading sound module: %s\n", name );
+ 
+-	file_size = strlen( LIB_DIRECTORY "/" LIB_PREFIX "snd_" ) + strlen( name ) + 1 + strlen( ARCH ) + strlen( LIB_SUFFIX ) + 1;
++	file_size = strlen( LIB_DIRECTORY "/" LIB_PREFIX "snd_" ) + strlen( name ) + strlen( LIB_SUFFIX ) + 1;
+ 	file = Mem_TempMalloc( file_size );
+-	Q_snprintfz( file, file_size, LIB_DIRECTORY "/" LIB_PREFIX "snd_%s_" ARCH LIB_SUFFIX, name );
++	Q_snprintfz( file, file_size, LIB_DIRECTORY "/" LIB_PREFIX "snd_%s" LIB_SUFFIX, name );
+ 
+ 	funcs[0].name = "GetSoundAPI";
+ 	funcs[0].funcPointer = ( void ** )&GetSoundAPI;
+diff -ruNp warsow_21_sdk/source/source/client/cl_ui.c warsow/source/client/cl_ui.c
+--- warsow_21_sdk/source/source/client/cl_ui.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/client/cl_ui.c	Fri May 17 14:43:38 2019
+@@ -337,7 +337,7 @@ void CL_UIModule_Init( void )
+ 	funcs[0].name = "GetUIAPI";
+ 	funcs[0].funcPointer = ( void ** ) &GetUIAPI;
+ 	funcs[1].name = NULL;
+-	module_handle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "ui_" ARCH LIB_SUFFIX, funcs );
++	module_handle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "ui" LIB_SUFFIX, funcs );
+ 	if( !module_handle )
+ 	{
+ 		Mem_FreePool( &ui_mempool );
+diff -ruNp warsow_21_sdk/source/source/client/cl_vid.c warsow/source/client/cl_vid.c
+--- warsow_21_sdk/source/source/client/cl_vid.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/client/cl_vid.c	Fri May 17 14:43:38 2019
+@@ -398,9 +398,9 @@ static bool VID_LoadRefresh( const char *name )
+ 	import.BufPipe_ReadCmds = QBufPipe_ReadCmds;
+ 	import.BufPipe_Wait = QBufPipe_Wait;
+ 
+-	file_size = strlen( LIB_DIRECTORY "/" LIB_PREFIX ) + strlen( name ) + 1 + strlen( ARCH ) + strlen( LIB_SUFFIX ) + 1;
++	file_size = strlen( LIB_DIRECTORY "/" LIB_PREFIX ) + strlen( name ) + strlen( LIB_SUFFIX ) + 1;
+ 	file = Mem_TempMalloc( file_size );
+-	Q_snprintfz( file, file_size, LIB_DIRECTORY "/" LIB_PREFIX "%s_" ARCH LIB_SUFFIX, name );
++	Q_snprintfz( file, file_size, LIB_DIRECTORY "/" LIB_PREFIX "%s" LIB_SUFFIX, name );
+ 
+ 	// load dynamic library
+ 	Com_Printf( "Loading refresh module %s... ", name );
+@@ -430,7 +430,7 @@ static bool VID_LoadRefresh( const char *name )
+ 	}
+ 	else
+ 	{
+-		Com_Printf( "Not found %s.\n", va( LIB_DIRECTORY "/" LIB_PREFIX "%s_" ARCH LIB_SUFFIX, name ) );
++		Com_Printf( "Not found %s.\n", va( LIB_DIRECTORY "/" LIB_PREFIX "%s" LIB_SUFFIX, name ) );
+ 		return false;
+ 	}
+ 
+diff -ruNp warsow_21_sdk/source/source/client/ftlib.c warsow/source/client/ftlib.c
+--- warsow_21_sdk/source/source/client/ftlib.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/client/ftlib.c	Fri May 17 14:43:38 2019
+@@ -175,7 +175,7 @@ void FTLIB_LoadLibrary( bool verbose )
+ 	funcs[0].name = "GetFTLibAPI";
+ 	funcs[0].funcPointer = ( void ** ) &GetFTLibAPI;
+ 	funcs[1].name = NULL;
+-	ftlib_libhandle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "ftlib_" ARCH LIB_SUFFIX, funcs );
++	ftlib_libhandle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "ftlib" LIB_SUFFIX, funcs );
+ 
+ 	if( ftlib_libhandle )
+ 	{
+diff -ruNp warsow_21_sdk/source/source/cmake/FindSDL2.cmake warsow/source/cmake/FindSDL2.cmake
+--- warsow_21_sdk/source/source/cmake/FindSDL2.cmake	Sat Mar 26 21:22:10 2016
++++ warsow/source/cmake/FindSDL2.cmake	Fri May 17 14:43:38 2019
+@@ -69,8 +69,10 @@ SET(SDL2_SEARCH_PATHS
+ 	~/Library/Frameworks
+ 	/Library/Frameworks
+ 	/usr/local
++	/usr/pkg # pkgsrc
+ 	/usr
+ 	/sw # Fink
++	/raven # Ravenports
+ 	/opt/local # DarwinPorts
+ 	/opt/csw # Blastwave
+ 	/opt
+diff -ruNp warsow_21_sdk/source/source/cmake/QfusionUtils.cmake warsow/source/cmake/QfusionUtils.cmake
+--- warsow_21_sdk/source/source/cmake/QfusionUtils.cmake	Sat Mar 26 21:22:10 2016
++++ warsow/source/cmake/QfusionUtils.cmake	Fri May 17 14:43:38 2019
+@@ -4,21 +4,18 @@ macro(add_common_link_flags flags)
+     set(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS} ${flags}")
+     set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${flags}")
+     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${flags}")
+-    set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} ${flags}")
+ endmacro()
+ 
+ macro(add_release_link_flags flags)
+     set(CMAKE_EXE_LINKER_FLAGS_DEBUG    "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${flags}")
+     set(CMAKE_MODULE_LINKER_FLAGS_DEBUG "${CMAKE_MODULE_LINKER_FLAGS_DEBUG} ${flags}")
+     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} ${flags}")
+-    set(CMAKE_STATIC_LINKER_FLAGS_DEBUG "${CMAKE_STATIC_LINKER_FLAGS_DEBUG} ${flags}")
+ endmacro()
+ 
+ macro(add_release_link_flags flags)
+     set(CMAKE_EXE_LINKER_FLAGS_RELEASE    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${flags}")
+     set(CMAKE_MODULE_LINKER_FLAGS_RELEASE "${CMAKE_MODULE_LINKER_FLAGS_RELEASE} ${flags}")
+     set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} ${flags}")
+-    set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "${CMAKE_STATIC_LINKER_FLAGS_RELEASE} ${flags}")
+ endmacro()
+ 
+ macro(capitalize s)
+@@ -57,4 +54,4 @@ macro(qf_set_output_dir name dir)
+     set_target_properties(${name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/build/${dir})
+     set_target_properties(${name} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/build/${dir})
+     set_target_properties(${name} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_HOME_DIRECTORY}/build/${dir})
+-endmacro()
+\ No newline at end of file
++endmacro()
+diff -ruNp warsow_21_sdk/source/source/ftlib/CMakeLists.txt warsow/source/ftlib/CMakeLists.txt
+--- warsow_21_sdk/source/source/ftlib/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/ftlib/CMakeLists.txt	Fri May 17 14:43:38 2019
+@@ -12,10 +12,8 @@ file(GLOB FTLIB_SOURCES
+     "../gameshared/q_*.c"
+ )
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+-        set(FTLIB_PLATFORM_LIBRARIES "m")
+-else ()
+-        set(FTLIB_PLATFORM_LIBRARIES "")
++if (UNIX)
++        set(FTLIB_PLATFORM_LIBRARIES m)
+ endif()
+ 
+ add_library(ftlib SHARED ${FTLIB_SOURCES} ${FTLIB_HEADERS})
+diff -ruNp warsow_21_sdk/source/source/ftlib/ftlib.c warsow/source/ftlib/ftlib.c
+--- warsow_21_sdk/source/source/ftlib/ftlib.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/ftlib/ftlib.c	Fri May 17 14:43:38 2019
+@@ -80,46 +80,6 @@ typedef struct
+ 
+ static void *q_freetypeLibrary;
+ 
+-#ifdef FREETYPELIB_RUNTIME
+-
+-static FT_Error (*q_FT_New_Size)( FT_Face face, FT_Size* size );
+-static FT_Error (*q_FT_Activate_Size)( FT_Size size );
+-static FT_Error (*q_FT_Set_Pixel_Sizes)( FT_Face face, FT_UInt pixel_width, FT_UInt pixel_height );
+-static FT_Error (*q_FT_Done_Size)( FT_Size  size );
+-static FT_UInt (*q_FT_Get_Char_Index)( FT_Face face, FT_ULong charcode );
+-static FT_Error (*q_FT_Get_Kerning)( FT_Face face, FT_UInt left_glyph, FT_UInt right_glyph, FT_UInt kern_mode, FT_Vector *akerning );
+-static FT_Error (*q_FT_Load_Glyph)( FT_Face face, FT_UInt glyph_index, FT_Int32 load_flags );
+-static FT_Error (*q_FT_New_Memory_Face)( FT_Library library, const FT_Byte* file_base, FT_Long file_size, FT_Long face_index, FT_Face *aface );
+-static FT_Error (*q_FT_Done_Face)( FT_Face face );
+-static FT_Error (*q_FT_Init_FreeType)( FT_Library  *alibrary );
+-static FT_Error (*q_FT_Done_FreeType)( FT_Library library );
+-#ifdef FT_MULFIX_INLINED
+-#define q_FT_MulFix FT_MulFix
+-#else
+-static FT_Long (*q_FT_MulFix)( FT_Long a, FT_Long b );
+-#endif
+-
+-static dllfunc_t freetypefuncs[] =
+-{
+-	{ "FT_New_Size", ( void **)&q_FT_New_Size },
+-	{ "FT_Activate_Size", ( void **)&q_FT_Activate_Size },
+-	{ "FT_Set_Pixel_Sizes", ( void **)&q_FT_Set_Pixel_Sizes },
+-	{ "FT_Done_Size", ( void **)&q_FT_Done_Size },
+-	{ "FT_Get_Char_Index", ( void **)&q_FT_Get_Char_Index },
+-	{ "FT_Get_Kerning", ( void **)&q_FT_Get_Kerning },
+-	{ "FT_Load_Glyph", ( void **)&q_FT_Load_Glyph },
+-	{ "FT_New_Memory_Face", ( void **)&q_FT_New_Memory_Face },
+-	{ "FT_Done_Face", ( void **)&q_FT_Done_Face },
+-	{ "FT_Init_FreeType", ( void **)&q_FT_Init_FreeType },
+-	{ "FT_Done_FreeType", ( void **)&q_FT_Done_FreeType },
+-#ifndef FT_MULFIX_INLINED
+-	{ "FT_MulFix", ( void **)&q_FT_MulFix },
+-#endif
+-	{ NULL, NULL },
+-};
+-
+-#else
+-
+ #define q_FT_New_Size FT_New_Size
+ #define q_FT_Activate_Size FT_Activate_Size
+ #define q_FT_Set_Pixel_Sizes FT_Set_Pixel_Sizes
+@@ -133,17 +93,11 @@ static dllfunc_t freetypefuncs[] =
+ #define q_FT_Done_FreeType FT_Done_FreeType
+ #define q_FT_MulFix FT_MulFix
+ 
+-#endif
+-
+ /*
+ * QFT_UnloadFreetypeLibrary
+ */
+ static void QFT_UnloadFreetypeLibrary( void )
+ {
+-#ifdef FREETYPELIB_RUNTIME
+-	if( q_freetypeLibrary )
+-		trap_UnloadLibrary( &q_freetypeLibrary );
+-#endif
+ 	q_freetypeLibrary = NULL;
+ }
+ 
+@@ -154,11 +108,7 @@ static void QFT_LoadFreetypeLibrary( void )
+ {
+ 	QFT_UnloadFreetypeLibrary();
+ 
+-#ifdef FREETYPELIB_RUNTIME
+-	q_freetypeLibrary = trap_LoadLibrary( LIBFREETYPE_LIBNAME, freetypefuncs );
+-#else
+ 	q_freetypeLibrary = (void *)1;
+-#endif
+ }
+ 
+ /*
+diff -ruNp warsow_21_sdk/source/source/game/CMakeLists.txt warsow/source/game/CMakeLists.txt
+--- warsow_21_sdk/source/source/game/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/game/CMakeLists.txt	Sat May 18 01:46:56 2019
+@@ -16,7 +16,7 @@ file(GLOB GAME_SOURCES
+ )
+ 
+ add_library(game SHARED ${GAME_SOURCES} ${GAME_HEADERS})
+-target_link_libraries(game PRIVATE ${ANGELSCRIPT_LIBRARY})
++target_link_libraries(game PRIVATE angelscript)
+ add_dependencies(game angelwrap)
+ set_property(TARGET game PROPERTY CXX_STANDARD 11)
+-qf_set_output_dir(game ${QFUSION_GAME_DIR})
+\ No newline at end of file
++qf_set_output_dir(game ${QFUSION_GAME_DIR})
+diff -ruNp warsow_21_sdk/source/source/gameshared/q_arch.h warsow/source/gameshared/q_arch.h
+--- warsow_21_sdk/source/source/gameshared/q_arch.h	Sat Mar 26 21:22:10 2016
++++ warsow/source/gameshared/q_arch.h	Sat May 18 01:29:45 2019
+@@ -118,47 +118,12 @@ extern "C" {
+ #define HAVE_WSIPX
+ #endif
+ 
+-#define LIB_DIRECTORY "libs"
+-#define LIB_PREFIX ""
+-#define LIB_SUFFIX ".dll"
+-
+ #define VID_INITFIRST
+ 
+ #define MUMBLE_SUPPORT
+-#define OPENAL_RUNTIME
+ 
+-// FIXME: move these to CMakeLists.txt
+-#define LIBZ_LIBNAME "zlib1.dll"
+-#define LIBCURL_LIBNAME "libcurl-4.dll|libcurl-3.dll"
+-#define LIBPNG_LIBNAME "libpng16.dll|libpng16-16.dll|libpng15-15.dll|libpng15.dll|libpng14-14.dll|libpng14.dll|libpng12.dll"
+-#define LIBJPEG_LIBNAME "libjpeg.dll"
+-#define LIBOGG_LIBNAME "libogg-0.dll|libogg.dll"
+-#define LIBVORBIS_LIBNAME "libvorbis-0.dll|libvorbis.dll|vorbis.dll"
+-#define LIBVORBISFILE_LIBNAME "libvorbisfile-3.dll|libvorbisfile.dll|vorbisfile.dll"
+-#define LIBTHEORA_LIBNAME "libtheora-0.dll|libtheora.dll"
+-#define LIBFREETYPE_LIBNAME "libfreetype-6.dll|freetype6.dll"
+-
+-#ifdef NDEBUG
+-#define BUILDSTRING "Win32 RELEASE"
+-#else
+-#define BUILDSTRING "Win32 DEBUG"
+-#endif
+-
+-#define OSNAME "Windows"
+-
+ #define STEAMQUERY_OS 'w'
+ 
+-#ifdef _M_IX86
+-#define CPUSTRING "x86"
+-#define ARCH "x86"
+-#elif defined ( __x86_64__ ) || defined( _M_AMD64 )
+-#define CPUSTRING "x64"
+-#define ARCH "x64"
+-#elif defined ( _M_ALPHA )
+-#define CPUSTRING "axp"
+-#define ARCH	  "axp"
+-#endif
+-
+ // doh, some compilers need a _ prefix for variables so they can be
+ // used in asm code
+ #ifdef __GNUC__     // mingw
+@@ -184,102 +149,26 @@ typedef unsigned long ioctl_param_t;
+ // But we don't want to include all those Windows definitions there, do we?
+ typedef UINT_PTR socket_handle_t;
+ 
++#elif defined ( __APPLE__ ) && defined ( __MACH__ )
++
++#ifndef __MACOSX__
++#define __MACOSX__
+ #endif
+ 
+-//==============================================
+-
+-#if defined ( __linux__ ) || defined ( __FreeBSD__ )
+-
+ #define HAVE_INLINE
+ 
+ #ifndef HAVE_STRCASECMP // SDL_config.h seems to define this too...
+ #define HAVE_STRCASECMP
+ #endif
+ 
+-#define LIB_DIRECTORY "libs"
+-#define LIB_PREFIX "lib"
+-#define LIB_SUFFIX ".so"
+-
+-#ifndef __ANDROID__
+ #define MUMBLE_SUPPORT
+-#define OPENAL_RUNTIME
+-#endif
+ 
+-// FIXME: move these to CMakeLists.txt
+-#define LIBZ_LIBNAME "libz.so.1|libz.so"
+-#define LIBCURL_LIBNAME "libcurl.so.4|libcurl.so.3|libcurl.so"
+-#define LIBPNG_LIBNAME "libpng16.so.16|libpng15.so.15|libpng14.so.14|libpng12.so.0|libpng.so"
+-#define LIBJPEG_LIBNAME "libjpeg.so.8|libjpeg.so"
+-#define LIBOGG_LIBNAME "libogg.so.0|libogg.so"
+-#define LIBVORBIS_LIBNAME "libvorbis.so.0|libvorbis.so"
+-#define LIBVORBISFILE_LIBNAME "libvorbisfile.so.3|libvorbisfile.so"
+-#define LIBTHEORA_LIBNAME "libtheora.so.0|libtheora.so"
+-#define LIBFREETYPE_LIBNAME "libfreetype.so.6|libfreetype.so"
++#define STEAMQUERY_OS 'o'
+ 
+-#if defined ( __FreeBSD__ )
+-#define BUILDSTRING "FreeBSD"
+-#define OSNAME "FreeBSD"
+-#elif defined ( __ANDROID__ )
+-#define BUILDSTRING "Android"
+-#define OSNAME "Android"
+-#else
+-#define BUILDSTRING "Linux"
+-#define OSNAME "Linux"
+-#endif
+-
+-#define STEAMQUERY_OS 'l'
+-
+-#ifdef __i386__
+-#if defined ( __FreeBSD__ )
+-#define ARCH "freebsd_i386"
+-#define CPUSTRING "i386"
+-#elif defined ( __ANDROID__ )
+-#define ARCH "android_x86"
+-#define CPUSTRING "i386"
+-#else
+-#define ARCH "i386"
+-#define CPUSTRING "i386"
+-#endif
+-#elif defined ( __x86_64__ )
+-#if defined __FreeBSD__
+-#define ARCH "freebsd_x86_64"
+-#define CPUSTRING "x86_64"
+-#else
+-#define ARCH "x86_64"
+-#define CPUSTRING "x86_64"
+-#endif
+-#elif defined ( __powerpc__ )
+-#define ARCH "ppc"
+-#define CPUSTRING "ppc"
+-#elif defined ( __alpha__ )
+-#define ARCH "axp"
+-#define CPUSTRING "axp"
+-#elif defined ( __arm__ )
+-#if defined ( __ANDROID__ )
+-#define ARCH "android_armeabi-v7a"
+-#define CPUSTRING "arm"
+-#else
+-#define ARCH "arm"
+-#define CPUSTRING "arm"
+-#endif
+-#elif defined ( _MIPS_ARCH )
+-#if defined ( __ANDROID__ )
+-#define ARCH "android_mips"
+-#define CPUSTRING "mips"
+-#else
+-#define ARCH "mips"
+-#define CPUSTRING "mips"
+-#endif
+-#else
+-#define CPUSTRING "Unknown"
+-#define ARCH "Unknown"
+-#endif
+-
+ #define VAR( x ) # x
+ 
+ #include <alloca.h>
+ 
+-// wsw : aiwa : 64bit integers and integer-pointer types
+ typedef int ioctl_param_t;
+ 
+ typedef int socket_handle_t;
+@@ -287,51 +176,27 @@ typedef int socket_handle_t;
+ #define SOCKET_ERROR (-1)
+ #define INVALID_SOCKET (-1)
+ 
+-#endif
++#else
+ 
+-//==============================================
+-
+-#if defined ( __APPLE__ ) && defined ( __MACH__ )
+-
+-#ifndef __MACOSX__
+-#define __MACOSX__
+-#endif
+-
+ #define HAVE_INLINE
+ 
+ #ifndef HAVE_STRCASECMP // SDL_config.h seems to define this too...
+ #define HAVE_STRCASECMP
+ #endif
+ 
+-#define LIB_DIRECTORY "libs"
+-#define LIB_PREFIX "lib"
+-#define LIB_SUFFIX ".dylib"
+-
++#ifndef __ANDROID__
+ #define MUMBLE_SUPPORT
+-#define OPENAL_RUNTIME
++#endif
+ 
+-// FIXME: move these to CMakeLists.txt
+-#define LIBZ_LIBNAME "libz.dylib"
+-#define LIBCURL_LIBNAME "libcurl.4.dylib|libcurl.3.dylib|libcurl.2.dylib"
+-#define LIBPNG_LIBNAME "libpng16.16.dylib|libpng15.15.dylib|libpng14.14.dylib|libpng12.0.dylib"
+-#define LIBJPEG_LIBNAME "libjpeg.62.dylib"
+-#define LIBOGG_LIBNAME "libogg.0.dylib|libogg.dylib"
+-#define LIBVORBIS_LIBNAME "libvorbis.dylib"
+-#define LIBVORBISFILE_LIBNAME "libvorbisfile.dylib"
+-#define LIBTHEORA_LIBNAME "libtheora.0.dylib|libtheora.dylib"
+-#define LIBFREETYPE_LIBNAME "libfreetype.6.dylib|libfreetype.dylib"
++#define STEAMQUERY_OS 'l'
+ 
+-//Mac OSX has universal binaries, no need for cpu dependency
+-#define BUILDSTRING "MacOSX"
+-#define OSNAME "MacOSX"
+-#define STEAMQUERY_OS 'o'
+-#define CPUSTRING "universal"
+-#define ARCH "mac"
+-
+ #define VAR( x ) # x
+ 
++#if defined ( __linux__ )
+ #include <alloca.h>
++#endif
+ 
++// wsw : aiwa : 64bit integers and integer-pointer types
+ typedef int ioctl_param_t;
+ 
+ typedef int socket_handle_t;
+diff -ruNp warsow_21_sdk/source/source/irc/CMakeLists.txt warsow/source/irc/CMakeLists.txt
+--- warsow_21_sdk/source/source/irc/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/irc/CMakeLists.txt	Fri May 17 14:43:38 2019
+@@ -14,10 +14,8 @@ file(GLOB IRC_SOURCES
+ add_library(irc SHARED ${IRC_SOURCES} ${IRC_HEADERS})
+ qf_set_output_dir(irc libs)
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+-    target_link_libraries(irc PRIVATE "ws2_32.lib")
+-endif()
+-
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+-    target_link_libraries(irc PRIVATE "m")
++if (WIN32)
++    target_link_libraries(irc PRIVATE ws2_32.lib)
++elseif (NOT APPLE)
++    target_link_libraries(irc PRIVATE m)
+ endif()
+diff -ruNp warsow_21_sdk/source/source/irc/irc_logic.c warsow/source/irc/irc_logic.c
+--- warsow_21_sdk/source/source/irc/irc_logic.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/irc/irc_logic.c	Fri May 17 14:43:38 2019
+@@ -545,7 +545,7 @@ static void Irc_Logic_CmdPrivmsg_f(irc_command_t cmd, 
+ 					; // NOT SUPPORTED
+ 				else if (!strcmp(trailing + 1, "VERSION" IRC_CTCP_MARKER_STR))
+ 					// The version and type of the client.
+-					Irc_Proto_Notice(nick, IRC_CTCP_MARKER_STR "VERSION " APPLICATION "IRC " IRC_LOGIC_VERSION " " BUILDSTRING " " ARCH IRC_CTCP_MARKER_STR);
++					Irc_Proto_Notice(nick, IRC_CTCP_MARKER_STR "VERSION " APPLICATION "IRC " IRC_LOGIC_VERSION " " BUILDSTRING " " CPUSTRING IRC_CTCP_MARKER_STR);
+ 				else if (!strcmp(trailing + 1, "SOURCE" IRC_CTCP_MARKER_STR))
+ 					// Where to obtain a copy of a client.
+ 					; // NOT SUPPORTED
+diff -ruNp warsow_21_sdk/source/source/qcommon/anticheat.c warsow/source/qcommon/anticheat.c
+--- warsow_21_sdk/source/source/qcommon/anticheat.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/qcommon/anticheat.c	Fri May 17 14:43:39 2019
+@@ -101,7 +101,7 @@ bool AC_LoadLibrary( void *imports, void *exports, uns
+ 		funcs[1].name = "InitClient";
+ 		funcs[1].funcPointer = (void **) &InitClient_f;
+ 		funcs[2].name = NULL;
+-		ac_libhandle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "ac_" ARCH LIB_SUFFIX, funcs );
++		ac_libhandle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "ac" LIB_SUFFIX, funcs );
+ 	}
+ 
+ 	// load succeeded or already loaded and exported functions retrieved
+diff -ruNp warsow_21_sdk/source/source/qcommon/ascript.c warsow/source/qcommon/ascript.c
+--- warsow_21_sdk/source/source/qcommon/ascript.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/qcommon/ascript.c	Fri May 17 14:43:39 2019
+@@ -83,9 +83,9 @@ static void *Com_LoadScriptLibrary( const char *basena
+ 	if( script_library )
+ 		Com_Error( ERR_FATAL, "Com_LoadScriptLibrary without Com_UnloadScriptLibrary" );
+ 
+-	file_size = strlen( LIB_DIRECTORY "/" LIB_PREFIX ) + strlen( basename ) + 1 + strlen( ARCH ) + strlen( LIB_SUFFIX ) + 1;
++	file_size = strlen( LIB_DIRECTORY "/" LIB_PREFIX ) + strlen( basename ) + strlen( LIB_SUFFIX ) + 1;
+ 	file = ( char* )Mem_TempMalloc( file_size );
+-	Q_snprintfz( file, file_size, LIB_DIRECTORY "/" LIB_PREFIX "%s_" ARCH LIB_SUFFIX, basename );
++	Q_snprintfz( file, file_size, LIB_DIRECTORY "/" LIB_PREFIX "%s" LIB_SUFFIX, basename );
+ 
+ 	funcs[0].name = "GetAngelwrapAPI";
+ 	funcs[0].funcPointer = ( void ** )&GetAngelwrapAPI;
+diff -ruNp warsow_21_sdk/source/source/qcommon/compression.c warsow/source/qcommon/compression.c
+--- warsow_21_sdk/source/source/qcommon/compression.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/qcommon/compression.c	Fri May 17 14:43:39 2019
+@@ -23,59 +23,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ 
+ static void *zLibrary;
+ 
+-#ifdef ZLIB_RUNTIME
+-
+-int (ZEXPORT *qzcompress)(Bytef *dest,uLongf *destLen, const Bytef *source, uLong sourceLen);
+-int (ZEXPORT *qzcompress2)(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen, int level);
+-int (ZEXPORT *qzuncompress)(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen);
+-int (ZEXPORT *qzinflateInit2_)(z_streamp strm, int  windowBits, const char *version, int stream_size);
+-int (ZEXPORT *qzinflate)(z_streamp strm, int flush);
+-int (ZEXPORT *qzinflateEnd)(z_streamp strm);
+-int (ZEXPORT *qzinflateReset)(z_streamp strm);
+-gzFile (ZEXPORT *qgzopen)(const char *, const char *);
+-z_off_t (ZEXPORT *qgzseek)(gzFile, z_off_t, int);
+-z_off_t (ZEXPORT *qgztell)(gzFile);
+-int (ZEXPORT *qgzread)(gzFile file, voidp buf, unsigned len);
+-int (ZEXPORT *qgzwrite)(gzFile file, voidpc buf, unsigned len);
+-int (ZEXPORT *qgzclose)(gzFile file);
+-int (ZEXPORT *qgzeof)(gzFile file);
+-int (ZEXPORT *qgzflush)(gzFile file, int flush);
+-int (ZEXPORT *qgzsetparams)(gzFile file, int level, int strategy);
+-int (ZEXPORT *qgzbuffer)(gzFile file, unsigned size);
+-
+-static dllfunc_t zlibfuncs[] =
+-{
+-	{ "compress", ( void **)&qzcompress },
+-	{ "compress2", ( void **)&qzcompress2 },
+-	{ "uncompress", ( void **)&qzuncompress },
+-	{ "inflateInit2_", ( void **)&qzinflateInit2_ },
+-	{ "inflate", ( void **)&qzinflate },
+-	{ "inflateEnd", ( void **)&qzinflateEnd },
+-	{ "inflateReset", ( void **)&qzinflateReset },
+-	{ "gzopen", ( void **)&qgzopen },
+-	{ "gzseek", ( void **)&qgzseek },
+-	{ "gztell", ( void **)&qgztell },
+-	{ "gzread", ( void **)&qgzread },
+-	{ "gzwrite", ( void **)&qgzwrite },
+-	{ "gzclose", ( void **)&qgzclose },
+-	{ "gzeof", ( void **)&qgzeof },
+-	{ "gzflush", ( void **)&qgzflush },
+-	{ "gzsetparams", ( void **)&qgzsetparams },
+-	{ "gzbuffer", ( void **)&qgzbuffer },
+-	{ NULL, NULL },
+-};
+-
+-#endif
+-
+ /*
+ * ZLib_UnloadLibrary
+ */
+ void ZLib_UnloadLibrary( void )
+ {
+-#ifdef ZLIB_RUNTIME
+-	if( zLibrary )
+-		Com_UnloadLibrary( &zLibrary );
+-#endif
+ 	zLibrary = NULL;
+ }
+ 
+@@ -86,13 +38,7 @@ void ZLib_LoadLibrary( void )
+ {
+ 	ZLib_UnloadLibrary();
+ 
+-#ifdef ZLIB_RUNTIME
+-	zLibrary = Com_LoadSysLibrary( LIBZ_LIBNAME, zlibfuncs );
+-	if( !zLibrary )
+-		Com_Error( ERR_FATAL, "Failed to load %s", LIBZ_LIBNAME );
+-#else
+ 	zLibrary = (void *)1;
+-#endif
+ }
+ 
+ /*
+diff -ruNp warsow_21_sdk/source/source/qcommon/compression.h warsow/source/qcommon/compression.h
+--- warsow_21_sdk/source/source/qcommon/compression.h	Sat Mar 26 21:22:10 2016
++++ warsow/source/qcommon/compression.h	Fri May 17 14:43:39 2019
+@@ -20,32 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ 
+ #include <zlib.h>
+ 
+-#ifdef ZLIB_RUNTIME
+-
+-#define qzinflateInit2(strm, windowBits) \
+-        qzinflateInit2_((strm), (windowBits), ZLIB_VERSION, \
+-                      (int)sizeof(z_stream))
+-
+-extern int (ZEXPORT *qzcompress)(Bytef *dest,   uLongf *destLen, const Bytef *source, uLong sourceLen);
+-extern int (ZEXPORT *qzcompress2)(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen, int level);
+-extern int (ZEXPORT *qzuncompress)(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen);
+-extern int (ZEXPORT *qzinflateInit2_)(z_streamp strm, int  windowBits, const char *version, int stream_size);
+-extern int (ZEXPORT *qzinflate)(z_streamp strm, int flush);
+-extern int (ZEXPORT *qzinflateEnd)(z_streamp strm);
+-extern int (ZEXPORT *qzinflateReset)(z_streamp strm);
+-extern gzFile (ZEXPORT *qgzopen)(const char *file, const char *mode);
+-extern z_off_t (ZEXPORT *qgzseek)(gzFile, z_off_t, int);
+-extern z_off_t (ZEXPORT *qgztell)(gzFile);
+-extern int (ZEXPORT *qgzread)(gzFile file, voidp buf, unsigned len);
+-extern int (ZEXPORT *qgzwrite)(gzFile file, voidpc buf, unsigned len);
+-extern int (ZEXPORT *qgzclose)(gzFile file);
+-extern int (ZEXPORT *qgzeof)(gzFile file);
+-extern int (ZEXPORT *qgzflush)(gzFile file, int flush);
+-extern int (ZEXPORT *qgzsetparams)(gzFile file, int level, int strategy);
+-extern int (ZEXPORT *qgzbuffer)(gzFile file, unsigned size);
+-
+-#else
+-
+ #define qzcompress compress
+ #define qzcompress2 compress2
+ #define qzuncompress uncompress
+@@ -63,8 +37,6 @@ extern int (ZEXPORT *qgzbuffer)(gzFile file, unsigned 
+ #define qgzflush gzflush
+ #define qgzsetparams gzsetparams
+ #define qgzbuffer gzbuffer
+-
+-#endif
+ 
+ void Com_LoadCompressionLibraries( void );
+ void Com_UnloadCompressionLibraries( void );
+diff -ruNp warsow_21_sdk/source/source/qcommon/files.c warsow/source/qcommon/files.c
+--- warsow_21_sdk/source/source/qcommon/files.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/qcommon/files.c	Sat May 18 01:23:27 2019
+@@ -4330,7 +4330,7 @@ void FS_Init( void )
+ 	// set basepaths
+ 	//
+ 	fs_cdpath = Cvar_Get( "fs_cdpath", "", CVAR_NOSET );
+-	fs_basepath = Cvar_Get( "fs_basepath", ".", CVAR_NOSET );
++	fs_basepath = Cvar_Get( "fs_basepath", DATADIR, CVAR_NOSET );
+ 	homedir = Sys_FS_GetHomeDirectory();
+ 	if( homedir != NULL )
+ #ifdef PUBLIC_BUILD
+diff -ruNp warsow_21_sdk/source/source/qcommon/irc.c warsow/source/qcommon/irc.c
+--- warsow_21_sdk/source/source/qcommon/irc.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/qcommon/irc.c	Fri May 17 14:43:39 2019
+@@ -200,7 +200,7 @@ static void Irc_LoadLibrary( void )
+ 	funcs[0].name = "GetIrcAPI";
+ 	funcs[0].funcPointer = (void **) &GetIrcAPI_f;
+ 	funcs[1].name = NULL;
+-	irc_libhandle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "irc_" ARCH LIB_SUFFIX, funcs );
++	irc_libhandle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "irc" LIB_SUFFIX, funcs );
+ 
+ 	if( irc_libhandle )
+ 	{
+diff -ruNp warsow_21_sdk/source/source/qcommon/library.c warsow/source/qcommon/library.c
+--- warsow_21_sdk/source/source/qcommon/library.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/qcommon/library.c	Fri May 17 14:43:39 2019
+@@ -286,23 +286,14 @@ void *Com_LoadGameLibrary( const char *basename, const
+ 	gamelib->lib = NULL;
+ 	gamelib->fullname = NULL;
+ 
+-	libname_size = strlen( LIB_PREFIX ) + strlen( basename ) + 1 + strlen( ARCH ) + strlen( LIB_SUFFIX ) + 1;
++	libname_size = strlen( LIB_PREFIX ) + strlen( basename ) + strlen( LIB_SUFFIX ) + 1;
+ 	libname = ( char* )Mem_TempMalloc( libname_size );
+-	Q_snprintfz( libname, libname_size, LIB_PREFIX "%s_" ARCH LIB_SUFFIX, basename );
++	Q_snprintfz( libname, libname_size, LIB_PREFIX "%s" LIB_SUFFIX, basename );
+ 
+ 	// it exists?
+ 	if( FS_FOpenFile( libname, NULL, FS_READ ) == -1 )
+ 	{
+ 		Com_Printf( "LoadLibrary (%s):(File not found)\n", libname );
+-		Mem_TempFree( libname );
+-		Mem_ZoneFree( gamelib );
+-		return NULL;
+-	}
+-
+-	// pure check
+-	if( pure && !FS_IsPureFile( libname ) )
+-	{
+-		Com_Printf( "LoadLibrary (%s):(Unpure file)\n", libname );
+ 		Mem_TempFree( libname );
+ 		Mem_ZoneFree( gamelib );
+ 		return NULL;
+diff -ruNp warsow_21_sdk/source/source/qcommon/net.c warsow/source/qcommon/net.c
+--- warsow_21_sdk/source/source/qcommon/net.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/qcommon/net.c	Fri May 17 14:43:39 2019
+@@ -41,7 +41,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ #	define SHUT_RDWR SD_BOTH
+ #endif
+ 
+-#if ( defined ( __FreeBSD__ ) && ( __FreeBSD_version < 600020 ) || defined ( __APPLE__ ) )
++#if defined ( __APPLE__ )
+ #	define USE_TCP_NOSIGPIPE
+ #endif
+ 
+diff -ruNp warsow_21_sdk/source/source/qcommon/steam.c warsow/source/qcommon/steam.c
+--- warsow_21_sdk/source/source/qcommon/steam.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/qcommon/steam.c	Fri May 17 14:43:39 2019
+@@ -50,7 +50,7 @@ void Steam_LoadLibrary( void )
+ 	funcs[0].name = "GetSteamLibAPI";
+ 	funcs[0].funcPointer = (void **) &GetSteamLibAPI;
+ 	funcs[1].name = NULL;
+-	steamlib_libhandle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "steamlib_" ARCH LIB_SUFFIX, funcs );
++	steamlib_libhandle = Com_LoadLibrary( LIB_DIRECTORY "/" LIB_PREFIX "steamlib" LIB_SUFFIX, funcs );
+ 
+ 	if( steamlib_libhandle )
+ 	{
+diff -ruNp warsow_21_sdk/source/source/qcommon/wswcurl.c warsow/source/qcommon/wswcurl.c
+--- warsow_21_sdk/source/source/qcommon/wswcurl.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/qcommon/wswcurl.c	Fri May 17 14:43:39 2019
+@@ -140,59 +140,6 @@ static void *curlLibrary = NULL;
+ static void *cryptoLibrary = NULL;
+ #endif
+ 
+-#ifdef LIBCURL_RUNTIME
+-
+-static CURLFORMcode (*qcurl_formadd)(struct curl_httppost **, struct curl_httppost **, ...);
+-static CURLcode (*qcurl_easy_setopt)(CURL *, CURLoption, ...);
+-static CURL *(*qcurl_easy_init)(void);
+-static char *(*qcurl_easy_escape)(CURL *, const char *, int );
+-static char *(*qcurl_easy_unescape)(CURL *, const char *, int , int *);
+-static void (*qcurl_free)(void *);
+-static CURLM *(*qcurl_multi_init)(void);
+-static CURLMcode (*qcurl_multi_cleanup)(CURLM *);
+-static CURLMcode (*qcurl_multi_perform)(CURLM *, int *);
+-static CURLMcode (*qcurl_multi_add_handle)(CURLM *, CURL *);
+-static CURLMcode (*qcurl_multi_remove_handle)(CURLM *, CURL *);
+-static struct curl_slist *(*qcurl_slist_append)(struct curl_slist *, const char *);
+-static void (*qcurl_slist_free_all)(struct curl_slist *);
+-static void (*qcurl_formfree)(struct curl_httppost *);
+-static void (*qcurl_easy_cleanup)(CURL *);
+-static CURLcode (*qcurl_easy_getinfo)(CURL *, CURLINFO , ...);
+-static const char *(*qcurl_easy_strerror)(CURLcode);
+-static CURLMsg *(*qcurl_multi_info_read)(CURLM *, int *);
+-static CURLcode (*qcurl_easy_pause)(CURL *, int );
+-static CURLcode (*qcurl_global_init)(long flags);
+-static void (*qcurl_global_cleanup)(void);
+-
+-static dllfunc_t libcurlfuncs[] =
+-{
+-	{ "curl_formadd", ( void ** )&qcurl_formadd },
+-	{ "curl_easy_setopt", ( void ** )&qcurl_easy_setopt },
+-	{ "curl_easy_init", ( void ** )&qcurl_easy_init },
+-	{ "curl_easy_escape", ( void ** )&qcurl_easy_escape },
+-	{ "curl_easy_unescape", ( void ** )&qcurl_easy_unescape },
+-	{ "curl_free", ( void ** )&qcurl_free },
+-	{ "curl_multi_init", ( void ** )&qcurl_multi_init },
+-	{ "curl_multi_cleanup", ( void ** )&qcurl_multi_cleanup },
+-	{ "curl_multi_perform", ( void ** )&qcurl_multi_perform },
+-	{ "curl_multi_add_handle", ( void ** )&qcurl_multi_add_handle },
+-	{ "curl_multi_remove_handle", ( void ** )&qcurl_multi_remove_handle },
+-	{ "curl_slist_append", ( void ** )&qcurl_slist_append },
+-	{ "curl_slist_free_all", ( void ** )&qcurl_slist_free_all },
+-	{ "curl_formfree", ( void ** )&qcurl_formfree },
+-	{ "curl_easy_cleanup", ( void ** )&qcurl_easy_cleanup },
+-	{ "curl_easy_getinfo", ( void ** )&qcurl_easy_getinfo },
+-	{ "curl_easy_strerror", ( void ** )&qcurl_easy_strerror },
+-	{ "curl_multi_info_read", ( void ** )&qcurl_multi_info_read },
+-	{ "curl_easy_pause", ( void ** )&qcurl_easy_pause },
+-	{ "curl_global_init", ( void ** )&qcurl_global_init },
+-	{ "curl_global_cleanup", ( void ** )&qcurl_global_cleanup },
+-
+-	{ NULL, NULL }
+-};
+-
+-#else
+-
+ #define qcurl_formadd curl_formadd
+ #define qcurl_easy_setopt curl_easy_setopt
+ #define qcurl_easy_init curl_easy_init
+@@ -215,47 +162,22 @@ static dllfunc_t libcurlfuncs[] =
+ #define qcurl_global_init curl_global_init
+ #define qcurl_global_cleanup curl_global_cleanup
+ 
+-#endif
+-
+ #ifdef USE_OPENSSL
+ 
+-#ifdef LIBCRYPTO_RUNTIME
+-
+-static int ( *qCRYPTO_num_locks )( void );
+-static void ( *qCRYPTO_set_locking_callback )( void ( *func )( int mode, int type, const char *file, int line ) );
+-static dllfunc_t libcryptofuncs[] =
+-{
+-	{ "CRYPTO_num_locks", ( void ** )&qCRYPTO_num_locks },
+-	{ "CRYPTO_set_locking_callback", ( void ** )&qCRYPTO_set_locking_callback },
+-	{ NULL, NULL }
+-};
+-
+-#else
+-
+ #define qCRYPTO_num_locks CRYPTO_num_locks
+ #define qCRYPTO_set_locking_callback CRYPTO_set_locking_callback
+ 
+ #endif
+ 
+-#endif
+-
+ /*
+ * wswcurl_unloadlib
+ */
+ static void wswcurl_unloadlib( void )
+ {
+ #ifdef USE_OPENSSL
+-#ifdef LIBCRYPTO_RUNTIME
+-	if( cryptoLibrary )
+-		Com_UnloadLibrary( &cryptoLibrary );
+-#endif
+ 	cryptoLibrary = NULL;
+ #endif
+ 
+-#ifdef LIBCURL_RUNTIME
+-	if( curlLibrary )
+-		Com_UnloadLibrary( &curlLibrary );
+-#endif
+ 	curlLibrary = NULL;
+ }
+ 
+@@ -266,18 +188,10 @@ static void wswcurl_loadlib( void )
+ {
+ 	wswcurl_unloadlib();
+ 
+-#ifdef LIBCURL_RUNTIME
+-	curlLibrary = Com_LoadSysLibrary( LIBCURL_LIBNAME, libcurlfuncs );
+-#else
+ 	curlLibrary = (void *)1;
+-#endif
+ 
+ #ifdef USE_OPENSSL
+-#ifdef LIBCRYPTO_RUNTIME
+-	cryptoLibrary = Com_LoadSysLibrary( LIBCRYPTO_LIBNAME, libcryptofuncs );
+-#else
+ 	cryptoLibrary = (void *)1;
+-#endif
+ #endif
+ }
+ 
+diff -ruNp warsow_21_sdk/source/source/ref_gl/CMakeLists.txt warsow/source/ref_gl/CMakeLists.txt
+--- warsow_21_sdk/source/source/ref_gl/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/ref_gl/CMakeLists.txt	Sun May 19 05:34:11 2019
+@@ -1,11 +1,7 @@
+ project(ref_gl)
+ 
+-include_directories(${JPEG_INCLUDE_DIR} ${PNG_INCLUDE_DIR})
++include_directories(${JPEG_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${PNG_INCLUDE_DIR} ${SDL2_INCLUDE_DIR} ${X11_INCLUDE_DIR})
+ 
+-if (USE_SDL2)
+-    include_directories(${SDL2_INCLUDE_DIR})
+-endif()
+-
+ file(GLOB REF_GL_HEADERS
+     "*.h"
+ 	"../gameshared/q_*.h"
+@@ -26,34 +22,13 @@ file(GLOB REF_GL_COMMON_SOURCES
+     "../qcommon/patch.c"
+ )
+ 
+-if (USE_SDL2)
+-   	file(GLOB REF_GL_PLATFORM_SOURCES
+-       	"../sdl/sdl_glw.c"
+-		"../sdl/sdl_glw_icon.c"
+-       	"../sdl/sdl_qgl.c"
+-   	)
++file(GLOB REF_GL_PLATFORM_SOURCES
++    "../sdl/sdl_glw.c"
++    "../sdl/sdl_glw_icon.c"
++    "../sdl/sdl_qgl.c"
++)
+ 
+-    set(REF_GL_PLATFORM_LIBRARIES ${SDL2_LIBRARY})
+-else()
+-    if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+-        file(GLOB REF_GL_PLATFORM_SOURCES
+-            "../win32/win_glw.c"
+-            "../win32/win_qgl.c"
+-        )
+-
+-        set(REF_GL_PLATFORM_LIBRARIES "")
+-    endif()
+-
+-    if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+-        file(GLOB REF_GL_PLATFORM_SOURCES
+-            "../unix/unix_glw.c"
+-            "../unix/unix_qgl.c"
+-            "../unix/unix_xpm.c"
+-        )
+-
+-        set(REF_GL_PLATFORM_LIBRARIES "X11" "Xext" "Xinerama" "Xrandr" "Xxf86vm" "m")
+-    endif()
+-endif()
++set(REF_GL_PLATFORM_LIBRARIES ${SDL2_LIBRARY})
+ 
+ add_library(ref_gl SHARED ${REF_GL_HEADERS} ${REF_GL_COMMON_SOURCES} ${REF_GL_PLATFORM_SOURCES})
+ target_link_libraries(ref_gl PRIVATE ${JPEG_LIBRARIES} ${PNG_LIBRARIES} ${REF_GL_PLATFORM_LIBRARIES})
+diff -ruNp warsow_21_sdk/source/source/ref_gl/qgl.h warsow/source/ref_gl/qgl.h
+--- warsow_21_sdk/source/source/ref_gl/qgl.h	Sat Mar 26 21:22:10 2016
++++ warsow/source/ref_gl/qgl.h	Fri May 17 14:43:39 2019
+@@ -72,14 +72,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ #if defined (__ANDROID__)
+ #include <GLES2/gl2.h>
+ #include <EGL/egl.h>
+-
+-#elif defined (__linux__) || defined (__FreeBSD__)
++#elif defined (__MACOSX__)
++#include <OpenGL/gl.h>
++#include <OpenGL/glext.h>
++#elif !defined (_WIN32)
+ #include <GL/glx.h>
+-#endif
+-
+-#if defined (__MACOSX__)
+-# include <OpenGL/gl.h>
+-# include <OpenGL/glext.h>
+ #endif
+ 
+ #undef GL_GLEXT_LEGACY
+diff -ruNp warsow_21_sdk/source/source/ref_gl/r_glimp.h warsow/source/ref_gl/r_glimp.h
+--- warsow_21_sdk/source/source/ref_gl/r_glimp.h	Sat Mar 26 21:22:10 2016
++++ warsow/source/ref_gl/r_glimp.h	Fri May 17 14:43:39 2019
+@@ -35,9 +35,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ #define QGL_GLX_EXT( type, name, params )
+ #define QGL_EGL( type, name, params )
+ #define QGL_EGL_EXT( type, name, params )
+-#endif
+ 
+-#if defined ( __ANDROID__ )
++#elif defined ( __ANDROID__ )
+ #define QGL_WGL( type, name, params )
+ #define QGL_WGL_EXT( type, name, params )
+ #define QGL_GLX( type, name, params )
+@@ -45,20 +44,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ #define QGL_EGL( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
+ #define QGL_EGL_EXT( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
+ 
+-#elif defined ( __linux__ ) || defined ( __FreeBSD__ )
++#elif defined ( __MACOSX__ )
+ #define QGL_WGL( type, name, params )
+ #define QGL_WGL_EXT( type, name, params )
+-#define QGL_GLX( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
+-#define QGL_GLX_EXT( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
++#define QGL_GLX( type, name, params )
++#define QGL_GLX_EXT( type, name, params )
+ #define QGL_EGL( type, name, params )
+ #define QGL_EGL_EXT( type, name, params )
+-#endif
+ 
+-#if defined ( __MACOSX__ )
++#else
+ #define QGL_WGL( type, name, params )
+ #define QGL_WGL_EXT( type, name, params )
+-#define QGL_GLX( type, name, params )
+-#define QGL_GLX_EXT( type, name, params )
++#define QGL_GLX( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
++#define QGL_GLX_EXT( type, name, params ) QGL_EXTERN type( APIENTRY * q ## name ) params;
+ #define QGL_EGL( type, name, params )
+ #define QGL_EGL_EXT( type, name, params )
+ #endif
+diff -ruNp warsow_21_sdk/source/source/ref_gl/r_imagelib.c warsow/source/ref_gl/r_imagelib.c
+--- warsow_21_sdk/source/source/ref_gl/r_imagelib.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/ref_gl/r_imagelib.c	Fri May 17 14:43:39 2019
+@@ -46,46 +46,6 @@ LIBS LOADING
+ 
+ void *jpegLibrary = NULL;
+ 
+-#ifdef LIBJPEG_RUNTIME
+-
+-static boolean (*qjpeg_resync_to_restart)(j_decompress_ptr, int);
+-static void (*qjpeg_CreateCompress)(j_compress_ptr, int, size_t);
+-static void (*qjpeg_CreateDecompress)(j_decompress_ptr, int, size_t);
+-static int (*qjpeg_read_header)(j_decompress_ptr, boolean);
+-static boolean (*qjpeg_start_decompress)(j_decompress_ptr cinfo);
+-static JDIMENSION (*qjpeg_read_scanlines)(j_decompress_ptr, JSAMPARRAY, JDIMENSION);
+-static struct jpeg_error_mgr *(*qjpeg_std_error)(struct jpeg_error_mgr * err);
+-static boolean (*qjpeg_finish_decompress)(j_decompress_ptr cinfo);
+-static void (*qjpeg_destroy_decompress)(j_decompress_ptr cinfo);
+-static void (*qjpeg_start_compress)(j_compress_ptr, boolean);
+-static void (*qjpeg_set_defaults)(j_compress_ptr cinfo);
+-static void (*qjpeg_set_quality)(j_compress_ptr, int, boolean);
+-static JDIMENSION (*qjpeg_write_scanlines)(j_compress_ptr, JSAMPARRAY scanlines, JDIMENSION);
+-static void (*qjpeg_finish_compress)(j_compress_ptr cinfo);
+-static void (*qjpeg_destroy_compress)(j_compress_ptr cinfo);
+-
+-static dllfunc_t libjpegfuncs[] =
+-{
+-	{ "jpeg_resync_to_restart", ( void ** )&qjpeg_resync_to_restart },
+-	{ "jpeg_CreateCompress", ( void ** )&qjpeg_CreateCompress },
+-	{ "jpeg_CreateDecompress", ( void ** )&qjpeg_CreateDecompress },
+-	{ "jpeg_read_header", ( void ** )&qjpeg_read_header },
+-	{ "jpeg_start_decompress", ( void ** )&qjpeg_start_decompress },
+-	{ "jpeg_read_scanlines", ( void ** )&qjpeg_read_scanlines },
+-	{ "jpeg_std_error", ( void ** )&qjpeg_std_error },
+-	{ "jpeg_finish_decompress", ( void ** )&qjpeg_finish_decompress },
+-	{ "jpeg_destroy_decompress", ( void ** )&qjpeg_destroy_decompress },
+-	{ "jpeg_start_compress", ( void ** )&qjpeg_start_compress },
+-	{ "jpeg_set_defaults", ( void ** )&qjpeg_set_defaults },
+-	{ "jpeg_set_quality", ( void ** )&qjpeg_set_quality },
+-	{ "jpeg_write_scanlines", ( void ** )&qjpeg_write_scanlines },
+-	{ "jpeg_finish_compress", ( void ** )&qjpeg_finish_compress },
+-	{ "jpeg_destroy_compress", ( void ** )&qjpeg_destroy_compress },
+-	{ NULL, NULL }
+-};
+-
+-#else
+-
+ #define qjpeg_resync_to_restart jpeg_resync_to_restart
+ #define qjpeg_CreateCompress jpeg_CreateCompress
+ #define qjpeg_CreateDecompress jpeg_CreateDecompress
+@@ -102,17 +62,11 @@ static dllfunc_t libjpegfuncs[] =
+ #define qjpeg_finish_compress jpeg_finish_compress
+ #define qjpeg_destroy_compress jpeg_destroy_compress
+ 
+-#endif
+-
+ /*
+ * R_Imagelib_UnloadLibjpeg
+ */
+ static void R_Imagelib_UnloadLibjpeg( void )
+ {
+-#ifdef LIBJPEG_RUNTIME
+-	if( jpegLibrary )
+-		ri.Com_UnloadLibrary( &jpegLibrary );
+-#endif
+ 	jpegLibrary = NULL;
+ }
+ 
+@@ -123,78 +77,13 @@ static void R_Imagelib_LoadLibjpeg( void )
+ {
+ 	R_Imagelib_UnloadLibjpeg();
+ 
+-#ifdef LIBJPEG_RUNTIME
+-	jpegLibrary = ri.Com_LoadSysLibrary( LIBJPEG_LIBNAME, libjpegfuncs );
+-#else
+ 	jpegLibrary = (void *)1;
+-#endif
+ }
+ 
+ // ======================================================
+ 
+ void *pngLibrary = NULL;
+ 
+-#ifdef LIBPNG_RUNTIME
+-
+-#ifndef PNGAPI
+-#define PNGAPI
+-#endif
+-
+-static int (PNGAPI *qpng_sig_cmp)(png_bytep, png_size_t, png_size_t);
+-static png_uint_32 (PNGAPI *qpng_access_version_number)(void);
+-static png_structp (PNGAPI *qpng_create_read_struct)(png_const_charp, png_voidp, png_error_ptr, png_error_ptr);
+-static png_infop (PNGAPI *qpng_create_info_struct)(png_structp png_ptr);
+-static void (PNGAPI *qpng_set_read_fn)(png_structp, png_voidp, png_rw_ptr);
+-static void (PNGAPI *qpng_set_sig_bytes)(png_structp, int);
+-static void (PNGAPI *qpng_read_info)(png_structp, png_infop);
+-static png_uint_32 (PNGAPI *qpng_get_IHDR)(png_structp, png_infop, png_uint_32 *, png_uint_32 *, int *, int *, int *, int *, int *);
+-static png_uint_32 (PNGAPI *qpng_get_valid)(png_structp, png_infop, png_uint_32);
+-static void (PNGAPI *qpng_set_palette_to_rgb)(png_structp);
+-static void (PNGAPI *qpng_set_gray_to_rgb)(png_structp);
+-static void (PNGAPI *qpng_set_tRNS_to_alpha)(png_structp);
+-static void (PNGAPI *qpng_set_expand)(png_structp);
+-static void (PNGAPI *qpng_read_update_info)(png_structp, png_infop);
+-static png_uint_32 (PNGAPI *qpng_get_rowbytes)(png_structp, png_infop);
+-static void (PNGAPI *qpng_read_image)(png_structp, png_bytepp);
+-static void (PNGAPI *qpng_read_end)(png_structp, png_infop);
+-static void (PNGAPI *qpng_destroy_read_struct)(png_structpp, png_infopp, png_infopp);
+-static png_voidp (PNGAPI *qpng_get_io_ptr)(png_structp);
+-
+-// Error handling in libpng pre-1.4 and 1.4+.
+-// In older versions, the jmp_buf is in the only public field of the struct, which is the first field.
+-// In 1.4 and newer, it is configured using png_set_longjmp_fn.
+-typedef void (*qpng_longjmp_ptr)(jmp_buf, int);
+-static jmp_buf *(PNGAPI *qpng_set_longjmp_fn)(png_structp, qpng_longjmp_ptr, size_t);
+-#define qpng_jmpbuf( png_ptr ) ( qpng_set_longjmp_fn ? \
+-	 *qpng_set_longjmp_fn( ( png_ptr ), longjmp, sizeof( jmp_buf ) ) : \
+-	 *( ( jmp_buf * )png_ptr ) )
+-
+-static dllfunc_t libpngfuncs[] =
+-{
+-	{ "png_sig_cmp", ( void ** )&qpng_sig_cmp },
+-	{ "png_access_version_number", ( void ** )&qpng_access_version_number },
+-	{ "png_create_read_struct", ( void ** )&qpng_create_read_struct },
+-	{ "png_create_info_struct", ( void ** )&qpng_create_info_struct },
+-	{ "png_set_read_fn", ( void ** )&qpng_set_read_fn },
+-	{ "png_set_sig_bytes", ( void ** )&qpng_set_sig_bytes },
+-	{ "png_read_info", ( void ** )&qpng_read_info },
+-	{ "png_get_IHDR", ( void ** )&qpng_get_IHDR },
+-	{ "png_get_valid", ( void ** )&qpng_get_valid },
+-	{ "png_set_palette_to_rgb", ( void ** )&qpng_set_palette_to_rgb },
+-	{ "png_set_gray_to_rgb", ( void ** )&qpng_set_gray_to_rgb },
+-	{ "png_set_tRNS_to_alpha", ( void ** )&qpng_set_tRNS_to_alpha },
+-	{ "png_set_expand", ( void ** )&qpng_set_expand },
+-	{ "png_read_update_info", ( void ** )&qpng_read_update_info },
+-	{ "png_get_rowbytes", ( void ** )&qpng_get_rowbytes },
+-	{ "png_read_image", ( void ** )&qpng_read_image },
+-	{ "png_read_end", ( void ** )&qpng_read_end },
+-	{ "png_destroy_read_struct", ( void ** )&qpng_destroy_read_struct },
+-	{ "png_get_io_ptr", ( void ** )&qpng_get_io_ptr },
+-	{ NULL, NULL }
+-};
+-
+-#else
+-
+ #define qpng_sig_cmp png_sig_cmp
+ #define qpng_access_version_number png_access_version_number
+ #define qpng_create_read_struct png_create_read_struct
+@@ -216,17 +105,11 @@ static dllfunc_t libpngfuncs[] =
+ #define qpng_destroy_read_struct png_destroy_read_struct
+ #define qpng_get_io_ptr png_get_io_ptr
+ 
+-#endif
+-
+ /*
+ * R_Imagelib_UnloadLibpng
+ */
+ static void R_Imagelib_UnloadLibpng( void )
+ {
+-#ifdef LIBPNG_RUNTIME
+-	if( pngLibrary )
+-		ri.Com_UnloadLibrary( &pngLibrary );
+-#endif
+ 	pngLibrary = NULL;
+ }
+ 
+@@ -237,13 +120,7 @@ static void R_Imagelib_LoadLibpng( void )
+ {
+ 	R_Imagelib_UnloadLibpng();
+ 
+-#ifdef LIBPNG_RUNTIME
+-	pngLibrary = ri.Com_LoadSysLibrary( LIBPNG_LIBNAME, libpngfuncs );
+-	if( pngLibrary )
+-		qpng_set_longjmp_fn = ri.Com_LibraryProcAddress( pngLibrary, "png_set_longjmp_fn" );
+-#else
+ 	pngLibrary =  (void *)1;
+-#endif
+ }
+ 
+ // ======================================================
+diff -ruNp warsow_21_sdk/source/source/ref_gl/r_register.c warsow/source/ref_gl/r_register.c
+--- warsow_21_sdk/source/source/ref_gl/r_register.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/ref_gl/r_register.c	Fri May 17 14:43:39 2019
+@@ -393,34 +393,6 @@ static const gl_extension_func_t gl_ext_texture_3D_OES
+ 
+ #endif // GL_ES_VERSION_2_0
+ 
+-#ifndef USE_SDL2
+-
+-#ifdef _WIN32
+-
+-/* WGL_EXT_swap_interval */
+-static const gl_extension_func_t wgl_ext_swap_interval_EXT_funcs[] =
+-{
+-	 GL_EXTENSION_FUNC_EXT("wglSwapIntervalEXT",&qwglSwapIntervalEXT)
+-
+-	,GL_EXTENSION_FUNC_EXT(NULL,NULL)
+-};
+-
+-#endif
+-
+-#ifdef GLX_VERSION
+-
+-/* GLX_SGI_swap_control */
+-static const gl_extension_func_t glx_ext_swap_control_SGI_funcs[] =
+-{
+-	 GL_EXTENSION_FUNC_EXT("glXSwapIntervalSGI",&qglXSwapIntervalSGI)
+-
+-	,GL_EXTENSION_FUNC_EXT(NULL,NULL)
+-};
+-
+-#endif
+-
+-#endif // USE_SDL2
+-
+ #undef GL_EXTENSION_FUNC
+ #undef GL_EXTENSION_FUNC_EXT
+ 
+@@ -498,15 +470,6 @@ static const gl_extension_t gl_extensions_decl[] =
+ 
+ 	,GL_EXTENSION( EXT, texture_filter_anisotropic, true, false, NULL )
+ 	,GL_EXTENSION( EXT, bgra, true, false, NULL )
+-
+-#ifndef USE_SDL2
+-#ifdef GLX_VERSION
+-	,GL_EXTENSION( GLX_SGI, swap_control, true, false, &glx_ext_swap_control_SGI_funcs )
+-#endif
+-#ifdef _WIN32
+-	,GL_EXTENSION( WGL_EXT, swap_control, true, false, &wgl_ext_swap_interval_EXT_funcs )
+-#endif
+-#endif
+ };
+ 
+ static const int num_gl_extensions = sizeof( gl_extensions_decl ) / sizeof( gl_extensions_decl[0] );
+@@ -1104,11 +1067,7 @@ static void R_Register( const char *screenshotsPrefix 
+ 	r_screenshot_jpeg_quality = ri.Cvar_Get( "r_screenshot_jpeg_quality", "90", CVAR_ARCHIVE );
+ 	r_screenshot_fmtstr = ri.Cvar_Get( "r_screenshot_fmtstr", va_r( tmp, sizeof( tmp ), "%s%y%%m%%d_%H%M%%S", screenshotsPrefix ), CVAR_ARCHIVE );
+ 
+-#if defined(GLX_VERSION) && !defined(USE_SDL2)
+-	r_swapinterval = ri.Cvar_Get( "r_swapinterval", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
+-#else
+ 	r_swapinterval = ri.Cvar_Get( "r_swapinterval", "0", CVAR_ARCHIVE );
+-#endif
+ 	r_swapinterval_min = ri.Cvar_Get( "r_swapinterval_min", "0", CVAR_READONLY ); // exposes vsync support to UI
+ 
+ 	r_temp1 = ri.Cvar_Get( "r_temp1", "0", 0 );
+@@ -1204,7 +1163,7 @@ static unsigned R_GLVersionHash( const char *vendorStr
+ 	unsigned hash;
+ 
+ 	tmp_size = strlen( vendorString ) + strlen( rendererString ) +
+-		strlen( versionString ) + strlen( ARCH ) + 1;
++		strlen( versionString ) + strlen( CPUSTRING ) + 1;
+ 
+ 	pos = 0;
+ 	tmp = R_Malloc( tmp_size );
+@@ -1222,8 +1181,8 @@ static unsigned R_GLVersionHash( const char *vendorStr
+ 	pos += csize;
+ 
+ 	// shaders are not compatible between 32-bit and 64-bit at least on Nvidia
+-	csize = strlen( ARCH );
+-	memcpy( tmp + pos, ARCH, csize );
++	csize = strlen( CPUSTRING );
++	memcpy( tmp + pos, CPUSTRING, csize );
+ 	pos += csize;
+ 
+ 	hash = COM_SuperFastHash( tmp, tmp_size, tmp_size );
+diff -ruNp warsow_21_sdk/source/source/sdl/sdl_glw.c warsow/source/sdl/sdl_glw.c
+--- warsow_21_sdk/source/source/sdl/sdl_glw.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/sdl/sdl_glw.c	Fri May 17 14:43:39 2019
+@@ -30,7 +30,7 @@ static int GLimp_InitGL( int stencilbits, bool stereo 
+ 
+ void GLimp_SetWindowIcon( void )
+ {
+-#ifndef __APPLE__
++/*
+ 	const int *xpm_icon = glw_state.applicationIcon;
+ 
+ 	if( xpm_icon )
+@@ -48,7 +48,7 @@ void GLimp_SetWindowIcon( void )
+ 
+ 		SDL_FreeSurface( surface );
+ 	}
+-#endif
++*/
+ }
+ 
+ rserr_t GLimp_SetFullscreenMode( int displayFrequency, bool fullscreen )
+diff -ruNp warsow_21_sdk/source/source/server/CMakeLists.txt warsow/source/server/CMakeLists.txt
+--- warsow_21_sdk/source/source/server/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/server/CMakeLists.txt	Fri May 17 14:43:39 2019
+@@ -52,7 +52,7 @@ file(GLOB SERVER_SOURCES
+     "../matchmaker/mm_*.c"
+ )
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
++if (WIN32)
+     file(GLOB SERVER_PLATFORM_SOURCES 
+         "../win32/win_fs.c"
+         "../win32/win_net.c"
+@@ -65,7 +65,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+         "../win32/conproc.c"
+     )
+ 
+-    set(SERVER_PLATFORM_LIBRARIES "ws2_32.lib" "winmm.lib")
++    set(SERVER_PLATFORM_LIBRARIES ws2_32.lib winmm.lib)
+     set(SERVER_BINARY_TYPE WIN32)
+ else()
+     file(GLOB SERVER_PLATFORM_SOURCES 
+@@ -79,7 +79,12 @@ else()
+         "../null/sys_vfs_null.c"
+     )
+ 
+-    set(SERVER_PLATFORM_LIBRARIES "pthread" "dl" "m")
++    if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
++        set(SERVER_PLATFORM_LIBRARIES pthread dl m)
++    else()
++        set(SERVER_PLATFORM_LIBRARIES pthread m)
++    endif()
++
+     set(SERVER_BINARY_TYPE "")
+ endif()
+ 
+@@ -88,4 +93,4 @@ add_dependencies(${QFUSION_SERVER_NAME} angelwrap game
+ target_link_libraries(${QFUSION_SERVER_NAME} PRIVATE ${CURL_LIBRARY} ${ZLIB_LIBRARY} ${SERVER_PLATFORM_LIBRARIES})
+ qf_set_output_dir(${QFUSION_SERVER_NAME} "")
+ 
+-set_target_properties(${QFUSION_SERVER_NAME} PROPERTIES COMPILE_DEFINITIONS "DEDICATED_ONLY")
+\ No newline at end of file
++set_target_properties(${QFUSION_SERVER_NAME} PROPERTIES COMPILE_DEFINITIONS "DEDICATED_ONLY")
+diff -ruNp warsow_21_sdk/source/source/server/sv_init.c warsow/source/server/sv_init.c
+--- warsow_21_sdk/source/source/server/sv_init.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/server/sv_init.c	Fri May 17 14:43:39 2019
+@@ -187,9 +187,9 @@ static void SV_ReloadPureList( void )
+ 		char *libname;
+ 		int libname_size;
+ 
+-		libname_size = strlen( LIB_PREFIX ) + 5 + strlen( ARCH ) + strlen( LIB_SUFFIX ) + 1;
++		libname_size = strlen( LIB_PREFIX ) + 4 + strlen( LIB_SUFFIX ) + 1;
+ 		libname = Mem_TempMalloc( libname_size );
+-		Q_snprintfz( libname, libname_size, LIB_PREFIX "game_" ARCH LIB_SUFFIX );
++		Q_snprintfz( libname, libname_size, LIB_PREFIX "game" LIB_SUFFIX );
+ 
+ 		if( !FS_PakNameForFile( libname ) )
+ 		{
+diff -ruNp warsow_21_sdk/source/source/snd_openal/CMakeLists.txt warsow/source/snd_openal/CMakeLists.txt
+--- warsow_21_sdk/source/source/snd_openal/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/snd_openal/CMakeLists.txt	Fri May 17 14:43:39 2019
+@@ -2,7 +2,7 @@ project(snd_openal)
+ 
+ include_directories(${VORBIS_INCLUDE_DIR} ${OGG_INCLUDE_DIR} "../snd_common" ".")
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
++if (WIN32)
+     include_directories("../win32/include") # For al.h
+ endif()
+ 
+@@ -19,9 +19,9 @@ file(GLOB SND_OPENAL_SOURCES
+ )
+ 
+ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+-        set(SND_OPENAL_PLATFORM_LIBRARIES "m" "dl")
+-else ()
+-        set(SND_OPENAL_PLATFORM_LIBRARIES "")
++        set(SND_OPENAL_PLATFORM_LIBRARIES m dl)
++elseif (UNIX)
++        set(SND_OPENAL_PLATFORM_LIBRARIES m)
+ endif()
+ 
+ add_library(snd_openal SHARED ${SND_OPENAL_HEADERS} ${SND_OPENAL_SOURCES})
+diff -ruNp warsow_21_sdk/source/source/snd_openal/qal.c warsow/source/snd_openal/qal.c
+--- warsow_21_sdk/source/source/snd_openal/qal.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/snd_openal/qal.c	Fri May 17 14:43:39 2019
+@@ -25,338 +25,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ 
+ #include "snd_local.h"
+ 
+-#ifdef OPENAL_RUNTIME
+-
+-/*#if USE_SDL_VIDEO
+-#include "SDL.h"
+-#include "SDL_loadso.h"
+-#define OBJTYPE void *
+-#define OBJLOAD(x) SDL_LoadObject(x)
+-#define SYMLOAD(x,y) SDL_LoadFunction(x,y)
+-#define OBJFREE(x) SDL_UnloadObject(x)*/
+-
+-#if defined _WIN32
+-#include <windows.h>
+-#define OBJTYPE HMODULE
+-#define OBJLOAD( x ) LoadLibrary( x )
+-#define SYMLOAD( x, y ) GetProcAddress( x, y )
+-#define OBJFREE( x ) FreeLibrary( x )
+-
+-#elif defined __linux__ || defined __FreeBSD__ || defined __MACOSX__ || defined __sun
+-#include <dlfcn.h>
+-#define OBJTYPE void *
+-#define OBJLOAD( x ) dlopen( x, RTLD_LAZY | RTLD_GLOBAL )
+-#define SYMLOAD( x, y ) dlsym( x, y )
+-#define OBJFREE( x ) dlclose( x )
+-#else
+-
+-#error "No lib loading code defined for platform."
+-#endif
+-
+-#if defined __linux__ || defined __FreeBSD__ || defined __MACOSX__
+-#include <unistd.h>
+-#include <sys/types.h>
+-#endif
+-
+-LPALENABLE qalEnable;
+-LPALDISABLE qalDisable;
+-LPALISENABLED qalIsEnabled;
+-LPALGETSTRING qalGetString;
+-LPALGETBOOLEANV qalGetBooleanv;
+-LPALGETINTEGERV qalGetIntegerv;
+-LPALGETFLOATV qalGetFloatv;
+-LPALGETDOUBLEV qalGetDoublev;
+-LPALGETBOOLEAN qalGetBoolean;
+-LPALGETINTEGER qalGetInteger;
+-LPALGETFLOAT qalGetFloat;
+-LPALGETDOUBLE qalGetDouble;
+-LPALGETERROR qalGetError;
+-LPALISEXTENSIONPRESENT qalIsExtensionPresent;
+-LPALGETPROCADDRESS qalGetProcAddress;
+-LPALGETENUMVALUE qalGetEnumValue;
+-LPALLISTENERF qalListenerf;
+-LPALLISTENER3F qalListener3f;
+-LPALLISTENERFV qalListenerfv;
+-LPALLISTENERI qalListeneri;
+-LPALGETLISTENERF qalGetListenerf;
+-LPALGETLISTENER3F qalGetListener3f;
+-LPALGETLISTENERFV qalGetListenerfv;
+-LPALGETLISTENERI qalGetListeneri;
+-LPALGENSOURCES qalGenSources;
+-LPALDELETESOURCES qalDeleteSources;
+-LPALISSOURCE qalIsSource;
+-LPALSOURCEF qalSourcef;
+-LPALSOURCE3F qalSource3f;
+-LPALSOURCEFV qalSourcefv;
+-LPALSOURCEI qalSourcei;
+-LPALGETSOURCEF qalGetSourcef;
+-LPALGETSOURCE3F qalGetSource3f;
+-LPALGETSOURCEFV qalGetSourcefv;
+-LPALGETSOURCEI qalGetSourcei;
+-LPALSOURCEPLAYV qalSourcePlayv;
+-LPALSOURCESTOPV qalSourceStopv;
+-LPALSOURCEREWINDV qalSourceRewindv;
+-LPALSOURCEPAUSEV qalSourcePausev;
+-LPALSOURCEPLAY qalSourcePlay;
+-LPALSOURCESTOP qalSourceStop;
+-LPALSOURCEREWIND qalSourceRewind;
+-LPALSOURCEPAUSE qalSourcePause;
+-LPALSOURCEQUEUEBUFFERS qalSourceQueueBuffers;
+-LPALSOURCEUNQUEUEBUFFERS qalSourceUnqueueBuffers;
+-LPALGENBUFFERS qalGenBuffers;
+-LPALDELETEBUFFERS qalDeleteBuffers;
+-LPALISBUFFER qalIsBuffer;
+-LPALBUFFERDATA qalBufferData;
+-LPALGETBUFFERF qalGetBufferf;
+-LPALGETBUFFERI qalGetBufferi;
+-LPALDOPPLERFACTOR qalDopplerFactor;
+-LPALDOPPLERVELOCITY qalDopplerVelocity;
+-LPALSPEEDOFSOUND qalSpeedOfSound;
+-LPALDISTANCEMODEL qalDistanceModel;
+-
+-LPALCCREATECONTEXT qalcCreateContext;
+-LPALCMAKECONTEXTCURRENT qalcMakeContextCurrent;
+-LPALCPROCESSCONTEXT qalcProcessContext;
+-LPALCSUSPENDCONTEXT qalcSuspendContext;
+-LPALCDESTROYCONTEXT qalcDestroyContext;
+-LPALCGETCURRENTCONTEXT qalcGetCurrentContext;
+-LPALCGETCONTEXTSDEVICE qalcGetContextsDevice;
+-LPALCOPENDEVICE qalcOpenDevice;
+-LPALCCLOSEDEVICE qalcCloseDevice;
+-LPALCGETERROR qalcGetError;
+-LPALCISEXTENSIONPRESENT qalcIsExtensionPresent;
+-LPALCGETPROCADDRESS qalcGetProcAddress;
+-LPALCGETENUMVALUE qalcGetEnumValue;
+-LPALCGETSTRING qalcGetString;
+-LPALCGETINTEGERV qalcGetIntegerv;
+-
+-static OBJTYPE OpenALLib = NULL;
+-
+-static bool alinit_fail = false;
+-
+-/*
+-* GPA
+-*/
+-static void *GPA( char *str )
+-{
+-	void *rv;
+-
+-	rv = SYMLOAD( OpenALLib, str );
+-	if( !rv )
+-	{
+-		Com_Printf( " Couldn't load symbol: %s\n", str );
+-		alinit_fail = true;
+-		return NULL;
+-	}
+-	else
+-	{
+-		//Com_DPrintf( " Loaded symbol: %s (0x%08X)\n", str, rv);
+-		return rv;
+-	}
+-}
+-
+-/*
+-* QAL_Init
+-*/
+ bool QAL_Init( const char *libname, bool verbose )
+ {
+-	if( OpenALLib )
+-		return true;
+-
+-	if( verbose )
+-		Com_Printf( "Loading OpenAL library: %s\n", libname );
+-
+-	if( ( OpenALLib = OBJLOAD( libname ) ) == 0 )
+-	{
+-#ifdef _WIN32
+-		return false;
+-#else
+-		char fn[2048];
+-
+-		if( getcwd( fn, sizeof( fn ) ) == NULL )
+-			return false;
+-
+-		Q_strncatz( fn, "/", sizeof( fn ) );
+-		Q_strncatz( fn, libname, sizeof( fn ) );
+-
+-		if( ( OpenALLib = OBJLOAD( fn ) ) == 0 )
+-			return false;
+-#endif
+-	}
+-
+-	alinit_fail = false;
+-
+-	qalEnable = GPA( "alEnable" );
+-	qalDisable = GPA( "alDisable" );
+-	qalIsEnabled = GPA( "alIsEnabled" );
+-	qalGetString = GPA( "alGetString" );
+-	qalGetBooleanv = GPA( "alGetBooleanv" );
+-	qalGetIntegerv = GPA( "alGetIntegerv" );
+-	qalGetFloatv = GPA( "alGetFloatv" );
+-	qalGetDoublev = GPA( "alGetDoublev" );
+-	qalGetBoolean = GPA( "alGetBoolean" );
+-	qalGetInteger = GPA( "alGetInteger" );
+-	qalGetFloat = GPA( "alGetFloat" );
+-	qalGetDouble = GPA( "alGetDouble" );
+-	qalGetError = GPA( "alGetError" );
+-	qalIsExtensionPresent = GPA( "alIsExtensionPresent" );
+-	qalGetProcAddress = GPA( "alGetProcAddress" );
+-	qalGetEnumValue = GPA( "alGetEnumValue" );
+-	qalListenerf = GPA( "alListenerf" );
+-	qalListener3f = GPA( "alListener3f" );
+-	qalListenerfv = GPA( "alListenerfv" );
+-	qalListeneri = GPA( "alListeneri" );
+-	qalGetListenerf = GPA( "alGetListenerf" );
+-	qalGetListener3f = GPA( "alGetListener3f" );
+-	qalGetListenerfv = GPA( "alGetListenerfv" );
+-	qalGetListeneri = GPA( "alGetListeneri" );
+-	qalGenSources = GPA( "alGenSources" );
+-	qalDeleteSources = GPA( "alDeleteSources" );
+-	qalIsSource = GPA( "alIsSource" );
+-	qalSourcef = GPA( "alSourcef" );
+-	qalSource3f = GPA( "alSource3f" );
+-	qalSourcefv = GPA( "alSourcefv" );
+-	qalSourcei = GPA( "alSourcei" );
+-	qalGetSourcef = GPA( "alGetSourcef" );
+-	qalGetSource3f = GPA( "alGetSource3f" );
+-	qalGetSourcefv = GPA( "alGetSourcefv" );
+-	qalGetSourcei = GPA( "alGetSourcei" );
+-	qalSourcePlayv = GPA( "alSourcePlayv" );
+-	qalSourceStopv = GPA( "alSourceStopv" );
+-	qalSourceRewindv = GPA( "alSourceRewindv" );
+-	qalSourcePausev = GPA( "alSourcePausev" );
+-	qalSourcePlay = GPA( "alSourcePlay" );
+-	qalSourceStop = GPA( "alSourceStop" );
+-	qalSourceRewind = GPA( "alSourceRewind" );
+-	qalSourcePause = GPA( "alSourcePause" );
+-	qalSourceQueueBuffers = GPA( "alSourceQueueBuffers" );
+-	qalSourceUnqueueBuffers = GPA( "alSourceUnqueueBuffers" );
+-	qalGenBuffers = GPA( "alGenBuffers" );
+-	qalDeleteBuffers = GPA( "alDeleteBuffers" );
+-	qalIsBuffer = GPA( "alIsBuffer" );
+-	qalBufferData = GPA( "alBufferData" );
+-	qalGetBufferf = GPA( "alGetBufferf" );
+-	qalGetBufferi = GPA( "alGetBufferi" );
+-	qalDopplerFactor = GPA( "alDopplerFactor" );
+-	qalDopplerVelocity = GPA( "alDopplerVelocity" );
+-	qalSpeedOfSound = GPA( "alSpeedOfSound" );
+-	qalDistanceModel = GPA( "alDistanceModel" );
+-
+-	qalcCreateContext = GPA( "alcCreateContext" );
+-	qalcMakeContextCurrent = GPA( "alcMakeContextCurrent" );
+-	qalcProcessContext = GPA( "alcProcessContext" );
+-	qalcSuspendContext = GPA( "alcSuspendContext" );
+-	qalcDestroyContext = GPA( "alcDestroyContext" );
+-	qalcGetCurrentContext = GPA( "alcGetCurrentContext" );
+-	qalcGetContextsDevice = GPA( "alcGetContextsDevice" );
+-	qalcOpenDevice = GPA( "alcOpenDevice" );
+-	qalcCloseDevice = GPA( "alcCloseDevice" );
+-	qalcGetError = GPA( "alcGetError" );
+-	qalcIsExtensionPresent = GPA( "alcIsExtensionPresent" );
+-	qalcGetProcAddress = GPA( "alcGetProcAddress" );
+-	qalcGetEnumValue = GPA( "alcGetEnumValue" );
+-	qalcGetString = GPA( "alcGetString" );
+-	qalcGetIntegerv = GPA( "alcGetIntegerv" );
+-
+-	if( alinit_fail )
+-	{
+-		QAL_Shutdown();
+-		Com_Printf( " Error: One or more symbols not found.\n" );
+-		return false;
+-	}
+-
+ 	return true;
+ }
+-
+-/*
+-* QAL_Shutdown
+-*/
+ void QAL_Shutdown( void )
+ {
+-	if( OpenALLib )
+-	{
+-		OBJFREE( OpenALLib );
+-		OpenALLib = NULL;
+-	}
+-
+-	qalEnable = NULL;
+-	qalDisable = NULL;
+-	qalIsEnabled = NULL;
+-	qalGetString = NULL;
+-	qalGetBooleanv = NULL;
+-	qalGetIntegerv = NULL;
+-	qalGetFloatv = NULL;
+-	qalGetDoublev = NULL;
+-	qalGetBoolean = NULL;
+-	qalGetInteger = NULL;
+-	qalGetFloat = NULL;
+-	qalGetDouble = NULL;
+-	qalGetError = NULL;
+-	qalIsExtensionPresent = NULL;
+-	qalGetProcAddress = NULL;
+-	qalGetEnumValue = NULL;
+-	qalListenerf = NULL;
+-	qalListener3f = NULL;
+-	qalListenerfv = NULL;
+-	qalListeneri = NULL;
+-	qalGetListenerf = NULL;
+-	qalGetListener3f = NULL;
+-	qalGetListenerfv = NULL;
+-	qalGetListeneri = NULL;
+-	qalGenSources = NULL;
+-	qalDeleteSources = NULL;
+-	qalIsSource = NULL;
+-	qalSourcef = NULL;
+-	qalSource3f = NULL;
+-	qalSourcefv = NULL;
+-	qalSourcei = NULL;
+-	qalGetSourcef = NULL;
+-	qalGetSource3f = NULL;
+-	qalGetSourcefv = NULL;
+-	qalGetSourcei = NULL;
+-	qalSourcePlayv = NULL;
+-	qalSourceStopv = NULL;
+-	qalSourceRewindv = NULL;
+-	qalSourcePausev = NULL;
+-	qalSourcePlay = NULL;
+-	qalSourceStop = NULL;
+-	qalSourceRewind = NULL;
+-	qalSourcePause = NULL;
+-	qalSourceQueueBuffers = NULL;
+-	qalSourceUnqueueBuffers = NULL;
+-	qalGenBuffers = NULL;
+-	qalDeleteBuffers = NULL;
+-	qalIsBuffer = NULL;
+-	qalBufferData = NULL;
+-	qalGetBufferf = NULL;
+-	qalGetBufferi = NULL;
+-	qalDopplerFactor = NULL;
+-	qalDopplerVelocity = NULL;
+-	qalSpeedOfSound = NULL;
+-	qalDistanceModel = NULL;
+-
+-	qalcCreateContext = NULL;
+-	qalcMakeContextCurrent = NULL;
+-	qalcProcessContext = NULL;
+-	qalcSuspendContext = NULL;
+-	qalcDestroyContext = NULL;
+-	qalcGetCurrentContext = NULL;
+-	qalcGetContextsDevice = NULL;
+-	qalcOpenDevice = NULL;
+-	qalcCloseDevice = NULL;
+-	qalcGetError = NULL;
+-	qalcIsExtensionPresent = NULL;
+-	qalcGetProcAddress = NULL;
+-	qalcGetEnumValue = NULL;
+-	qalcGetString = NULL;
+-	qalcGetIntegerv = NULL;
+ }
+-#else
+-bool QAL_Init( const char *libname, bool verbose )
+-{
+-	return true;
+-}
+-void QAL_Shutdown( void )
+-{
+-}
+-#endif
+diff -ruNp warsow_21_sdk/source/source/snd_openal/qal.h warsow/source/snd_openal/qal.h
+--- warsow_21_sdk/source/source/snd_openal/qal.h	Sat Mar 26 21:22:10 2016
++++ warsow/source/snd_openal/qal.h	Fri May 17 14:43:39 2019
+@@ -24,11 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ #ifndef __QAL_H__
+ #define __QAL_H__
+ 
+-#ifdef OPENAL_RUNTIME
+-#define AL_NO_PROTOTYPES
+-#define ALC_NO_PROTOTYPES
+-#endif
+-
+ #if defined ( _WIN32 ) 
+ #include <al.h>
+ #include <alc.h>
+@@ -40,102 +35,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ #include <AL/alc.h>
+ #endif
+ 
+-#ifdef OPENAL_RUNTIME
+-extern LPALENABLE qalEnable;
+-extern LPALDISABLE qalDisable;
+-extern LPALISENABLED qalIsEnabled;
+-extern LPALGETSTRING qalGetString;
+-extern LPALGETBOOLEANV qalGetBooleanv;
+-extern LPALGETINTEGERV qalGetIntegerv;
+-extern LPALGETFLOATV qalGetFloatv;
+-extern LPALGETDOUBLEV qalGetDoublev;
+-extern LPALGETBOOLEAN qalGetBoolean;
+-extern LPALGETINTEGER qalGetInteger;
+-extern LPALGETFLOAT qalGetFloat;
+-extern LPALGETDOUBLE qalGetDouble;
+-extern LPALGETERROR qalGetError;
+-extern LPALISEXTENSIONPRESENT qalIsExtensionPresent;
+-extern LPALGETPROCADDRESS qalGetProcAddress;
+-extern LPALGETENUMVALUE qalGetEnumValue;
+-extern LPALLISTENERF qalListenerf;
+-extern LPALLISTENER3F qalListener3f;
+-extern LPALLISTENERFV qalListenerfv;
+-extern LPALLISTENERI qalListeneri;
+-extern LPALLISTENER3I qalListener3i;
+-extern LPALLISTENERIV qalListeneriv;
+-extern LPALGETLISTENERF qalGetListenerf;
+-extern LPALGETLISTENER3F qalGetListener3f;
+-extern LPALGETLISTENERFV qalGetListenerfv;
+-extern LPALGETLISTENERI qalGetListeneri;
+-extern LPALGETLISTENER3I qalGetListener3i;
+-extern LPALGETLISTENERIV qalGetListeneriv;
+-extern LPALGENSOURCES qalGenSources;
+-extern LPALDELETESOURCES qalDeleteSources;
+-extern LPALISSOURCE qalIsSource;
+-extern LPALSOURCEF qalSourcef;
+-extern LPALSOURCE3F qalSource3f;
+-extern LPALSOURCEFV qalSourcefv;
+-extern LPALSOURCEI qalSourcei;
+-extern LPALSOURCE3I qalSource3i;
+-extern LPALSOURCEIV qalSourceiv;
+-extern LPALGETSOURCEF qalGetSourcef;
+-extern LPALGETSOURCE3F qalGetSource3f;
+-extern LPALGETSOURCEFV qalGetSourcefv;
+-extern LPALGETSOURCEI qalGetSourcei;
+-extern LPALGETSOURCE3I qalGetSource3i;
+-extern LPALGETSOURCEIV qalGetSourceiv;
+-extern LPALSOURCEPLAYV qalSourcePlayv;
+-extern LPALSOURCESTOPV qalSourceStopv;
+-extern LPALSOURCEREWINDV qalSourceRewindv;
+-extern LPALSOURCEPAUSEV qalSourcePausev;
+-extern LPALSOURCEPLAY qalSourcePlay;
+-extern LPALSOURCESTOP qalSourceStop;
+-extern LPALSOURCEREWIND qalSourceRewind;
+-extern LPALSOURCEPAUSE qalSourcePause;
+-extern LPALSOURCEQUEUEBUFFERS qalSourceQueueBuffers;
+-extern LPALSOURCEUNQUEUEBUFFERS qalSourceUnqueueBuffers;
+-extern LPALGENBUFFERS qalGenBuffers;
+-extern LPALDELETEBUFFERS qalDeleteBuffers;
+-extern LPALISBUFFER qalIsBuffer;
+-extern LPALBUFFERDATA qalBufferData;
+-extern LPALBUFFERF qalBufferf;
+-extern LPALBUFFER3F qalBuffer3f;
+-extern LPALBUFFERFV qalBufferfv;
+-extern LPALBUFFERF qalBufferi;
+-extern LPALBUFFER3F qalBuffer3i;
+-extern LPALBUFFERFV qalBufferiv;
+-extern LPALGETBUFFERF qalGetBufferf;
+-extern LPALGETBUFFER3F qalGetBuffer3f;
+-extern LPALGETBUFFERFV qalGetBufferfv;
+-extern LPALGETBUFFERI qalGetBufferi;
+-extern LPALGETBUFFER3I qalGetBuffer3i;
+-extern LPALGETBUFFERIV qalGetBufferiv;
+-extern LPALDOPPLERFACTOR qalDopplerFactor;
+-extern LPALDOPPLERVELOCITY qalDopplerVelocity;
+-extern LPALSPEEDOFSOUND qalSpeedOfSound;
+-extern LPALDISTANCEMODEL qalDistanceModel;
+-
+-extern LPALCCREATECONTEXT qalcCreateContext;
+-extern LPALCMAKECONTEXTCURRENT qalcMakeContextCurrent;
+-extern LPALCPROCESSCONTEXT qalcProcessContext;
+-extern LPALCSUSPENDCONTEXT qalcSuspendContext;
+-extern LPALCDESTROYCONTEXT qalcDestroyContext;
+-extern LPALCGETCURRENTCONTEXT qalcGetCurrentContext;
+-extern LPALCGETCONTEXTSDEVICE qalcGetContextsDevice;
+-extern LPALCOPENDEVICE qalcOpenDevice;
+-extern LPALCCLOSEDEVICE qalcCloseDevice;
+-extern LPALCGETERROR qalcGetError;
+-extern LPALCISEXTENSIONPRESENT qalcIsExtensionPresent;
+-extern LPALCGETPROCADDRESS qalcGetProcAddress;
+-extern LPALCGETENUMVALUE qalcGetEnumValue;
+-extern LPALCGETSTRING qalcGetString;
+-extern LPALCGETINTEGERV qalcGetIntegerv;
+-extern LPALCCAPTUREOPENDEVICE qalcCaptureOpenDevice;
+-extern LPALCCAPTURECLOSEDEVICE qalcCaptureCloseDevice;
+-extern LPALCCAPTURESTART qalcCaptureStart;
+-extern LPALCCAPTURESTOP qalcCaptureStop;
+-extern LPALCCAPTURESAMPLES qalcCaptureSamples;
+-#else
+ #define qalEnable alEnable
+ #define qalDisable alDisable
+ #define qalIsEnabled alIsEnabled
+@@ -230,7 +129,6 @@ extern LPALCCAPTURESAMPLES qalcCaptureSamples;
+ #define qalcCaptureStart alcCaptureStart
+ #define qalcCaptureStop alcCaptureStop
+ #define qalcCaptureSamples alcCaptureSamples
+-#endif
+ 
+ bool QAL_Init( const char *libname, bool verbose );
+ void QAL_Shutdown( void );
+diff -ruNp warsow_21_sdk/source/source/snd_openal/snd_decoder_ogg.c warsow/source/snd_openal/snd_decoder_ogg.c
+--- warsow_21_sdk/source/source/snd_openal/snd_decoder_ogg.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/snd_openal/snd_decoder_ogg.c	Fri May 17 14:43:39 2019
+@@ -26,35 +26,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ #include "snd_decoder.h"
+ #include <vorbis/vorbisfile.h>
+ 
+-#ifdef VORBISLIB_RUNTIME
+-
+-void *vorbisLibrary = NULL;
+-
+-int ( *qov_clear )( OggVorbis_File *vf );
+-int ( *qov_open_callbacks )( void *datasource, OggVorbis_File *vf, const char *initial, long ibytes, ov_callbacks callbacks );
+-ogg_int64_t ( *qov_pcm_total )( OggVorbis_File *vf, int i );
+-vorbis_info *( *qov_info )( OggVorbis_File *vf, int link );
+-long ( *qov_read )( OggVorbis_File *vf, char *buffer, int length, int bigendianp, int word, int sgned, int *bitstream );
+-long ( *qov_streams )( OggVorbis_File *vf );
+-long ( *qov_seekable )( OggVorbis_File *vf );
+-int ( *qov_pcm_seek )( OggVorbis_File *vf, ogg_int64_t pos );
+-
+-dllfunc_t oggvorbisfuncs[] =
+-{
+-	{ "ov_clear", ( void ** )&qov_clear },
+-	{ "ov_open_callbacks", ( void ** )&qov_open_callbacks },
+-	{ "ov_pcm_total", ( void ** )&qov_pcm_total },
+-	{ "ov_info", ( void ** )&qov_info },
+-	{ "ov_read", ( void ** )&qov_read },
+-	{ "ov_streams", ( void ** )&qov_streams },
+-	{ "ov_seekable", ( void ** )&qov_seekable },
+-	{ "ov_pcm_seek", ( void ** )&qov_pcm_seek },
+-
+-	{ NULL, NULL }
+-};
+-
+-#else // VORBISLIB_RUNTIME
+-
+ #define qov_clear ov_clear
+ #define qov_open_callbacks ov_open_callbacks
+ #define qov_pcm_total ov_pcm_total
+@@ -64,17 +35,11 @@ dllfunc_t oggvorbisfuncs[] =
+ #define qov_seekable ov_seekable
+ #define qov_pcm_seek ov_pcm_seek
+ 
+-#endif // VORBISLIB_RUNTIME
+-
+ /*
+ * SNDOGG_Shutdown
+ */
+ void SNDOGG_Shutdown( bool verbose )
+ {
+-#ifdef VORBISLIB_RUNTIME
+-	if( vorbisLibrary )
+-		trap_UnloadLibrary( &vorbisLibrary );
+-#endif
+ }
+ 
+ /*
+@@ -82,18 +47,6 @@ void SNDOGG_Shutdown( bool verbose )
+ */
+ bool SNDOGG_Init( bool verbose )
+ {
+-#ifdef VORBISLIB_RUNTIME
+-	if( vorbisLibrary )
+-		SNDOGG_Shutdown( verbose );
+-
+-	vorbisLibrary = trap_LoadLibrary( LIBVORBISFILE_LIBNAME, oggvorbisfuncs );
+-	if( !vorbisLibrary )
+-	{
+-		if( verbose )
+-			Com_Printf( "Couldn't load %s\n", LIBVORBISFILE_LIBNAME );
+-		return false;
+-	}
+-#endif
+ 	return true;
+ }
+ 
+diff -ruNp warsow_21_sdk/source/source/snd_openal/snd_local.h warsow/source/snd_openal/snd_local.h
+--- warsow_21_sdk/source/source/snd_openal/snd_local.h	Sat Mar 26 21:22:10 2016
++++ warsow/source/snd_openal/snd_local.h	Fri May 17 14:43:39 2019
+@@ -19,8 +19,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ */
+ // snd_local.h -- private OpenAL sound functions
+ 
+-//#define VORBISLIB_RUNTIME // enable this define for dynamic linked vorbis libraries
+-
+ // it's in qcommon.h too, but we don't include it for modules
+ typedef struct { char *name; void **funcPointer; } dllfunc_t;
+ 
+diff -ruNp warsow_21_sdk/source/source/snd_openal/snd_main.c warsow/source/snd_openal/snd_main.c
+--- warsow_21_sdk/source/source/snd_openal/snd_main.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/snd_openal/snd_main.c	Fri May 17 14:43:39 2019
+@@ -113,19 +113,6 @@ bool SF_Init( void *hwnd, int maxEntities, bool verbos
+ 	
+ 	s_num_ent_spats = 0;
+ 
+-#ifdef OPENAL_RUNTIME
+-	if( !QAL_Init( ALDRIVER, verbose ) )
+-	{
+-#ifdef ALDRIVER_ALT
+-		if( !QAL_Init( ALDRIVER_ALT, verbose ) )
+-#endif
+-		{
+-			Com_Printf( "Failed to load OpenAL library: %s\n", ALDRIVER );
+-			return false;
+-		}
+-	}
+-#endif
+-
+ 	s_volume = trap_Cvar_Get( "s_volume", "0.8", CVAR_ARCHIVE );
+ 	s_musicvolume = trap_Cvar_Get( "s_musicvolume", "0.15", CVAR_ARCHIVE );
+ 	s_doppler = trap_Cvar_Get( "s_doppler", "1.0", CVAR_ARCHIVE );
+diff -ruNp warsow_21_sdk/source/source/snd_qf/CMakeLists.txt warsow/source/snd_qf/CMakeLists.txt
+--- warsow_21_sdk/source/source/snd_qf/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/snd_qf/CMakeLists.txt	Fri May 17 14:43:39 2019
+@@ -1,11 +1,7 @@
+ project(snd_qf)
+ 
+-include_directories(${VORBIS_INCLUDE_DIR} ${OGG_INCLUDE_DIR} "../snd_common" ".")
++include_directories(${VORBIS_INCLUDE_DIR} ${SDL2_INCLUDE_DIR} ${OGG_INCLUDE_DIR} "../snd_common" ".")
+ 
+-if (USE_SDL2 OR (${CMAKE_SYSTEM_NAME} MATCHES "Linux"))
+-    include_directories(${SDL2_INCLUDE_DIR})
+-endif()
+-
+ file(GLOB SND_QF_HEADERS
+     "*.h"
+ 	"../gameshared/q_*.h"
+@@ -18,22 +14,12 @@ file(GLOB SND_QF_SOURCES
+     "../gameshared/q_*.c"
+ )
+ 
+-if (USE_SDL2 OR (${CMAKE_SYSTEM_NAME} MATCHES "Linux"))
+-    file(GLOB SND_QF_PLATFORM_SOURCES
+-        "../sdl/sdl_snd.c"
+-    )
++file(GLOB SND_QF_PLATFORM_SOURCES
++    "../sdl/sdl_snd.c"
++)
+ 
+-    if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+-	set(SND_QF_PLATFORM_LIBRARIES ${SDL2_LIBRARY} "m")
+-    else()
+-	set(SND_QF_PLATFORM_LIBRARIES ${SDL2_LIBRARY})
+-    endif()
+-else()
+-    file(GLOB SND_QF_PLATFORM_SOURCES
+-        "../win32/win_snd.c"
+-    )
+-
+-    set(SND_QF_PLATFORM_LIBRARIES "winmm.lib")
++if (UNIX)
++    set(SND_QF_PLATFORM_LIBRARIES ${SDL2_LIBRARY} m)
+ endif()
+ 
+ add_library(snd_qf SHARED ${SND_QF_HEADERS} ${SND_QF_SOURCES} ${SND_QF_PLATFORM_SOURCES})
+diff -ruNp warsow_21_sdk/source/source/snd_qf/snd_local.h warsow/source/snd_qf/snd_local.h
+--- warsow_21_sdk/source/source/snd_qf/snd_local.h	Sat Mar 26 21:22:10 2016
++++ warsow/source/snd_qf/snd_local.h	Fri May 17 14:43:39 2019
+@@ -19,8 +19,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ */
+ // snd_loc.h -- private sound functions
+ 
+-//#define VORBISLIB_RUNTIME // enable this define for dynamic linked vorbis libraries
+-
+ // it's in qcommon.h too, but we don't include it for modules
+ typedef struct { char *name; void **funcPointer; } dllfunc_t;
+ 
+diff -ruNp warsow_21_sdk/source/source/snd_qf/snd_ogg.c warsow/source/snd_qf/snd_ogg.c
+--- warsow_21_sdk/source/source/snd_qf/snd_ogg.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/snd_qf/snd_ogg.c	Fri May 17 14:43:39 2019
+@@ -24,40 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ #include "snd_local.h"
+ #include <vorbis/vorbisfile.h>
+ 
+-#ifdef VORBISLIB_RUNTIME
+-
+-void *vorbisLibrary = NULL;
+-
+-int ( *qov_clear )( OggVorbis_File *vf );
+-int ( *qov_open_callbacks )( void *datasource, OggVorbis_File *vf, const char *initial, long ibytes, ov_callbacks callbacks );
+-ogg_int64_t ( *qov_pcm_total )( OggVorbis_File *vf, int i );
+-int ( *qov_pcm_seek )( OggVorbis_File *vf, ogg_int64_t pos );
+-int ( *qov_raw_seek )( OggVorbis_File *vf, ogg_int64_t pos );
+-ogg_int64_t ( *qov_raw_tell )( OggVorbis_File *vf );
+-vorbis_info *( *qov_info )( OggVorbis_File *vf, int link );
+-long ( *qov_read )( OggVorbis_File *vf, char *buffer, int length, int bigendianp, int word, int sgned, int *bitstream );
+-long ( *qov_streams )( OggVorbis_File *vf );
+-long ( *qov_seekable )( OggVorbis_File *vf );
+-int ( *qov_pcm_seek )( OggVorbis_File *vf, ogg_int64_t pos );
+-
+-dllfunc_t oggvorbisfuncs[] =
+-{
+-	{ "ov_clear", ( void ** )&qov_clear },
+-	{ "ov_open_callbacks", ( void ** )&qov_open_callbacks },
+-	{ "ov_pcm_total", ( void ** )&qov_pcm_total },
+-	{ "ov_raw_seek", ( void ** )&qov_raw_seek },
+-	{ "ov_raw_tell", ( void ** )&qov_raw_tell },
+-	{ "ov_info", ( void ** )&qov_info },
+-	{ "ov_read", ( void ** )&qov_read },
+-	{ "ov_streams", ( void ** )&qov_streams },
+-	{ "ov_seekable", ( void ** )&qov_seekable },
+-	{ "ov_pcm_seek", ( void ** )&qov_pcm_seek },
+-
+-	{ NULL, NULL }
+-};
+-
+-#else // VORBISLIB_RUNTIME
+-
+ #define qov_clear ov_clear
+ #define qov_open_callbacks ov_open_callbacks
+ #define qov_pcm_total ov_pcm_total
+@@ -69,17 +35,11 @@ dllfunc_t oggvorbisfuncs[] =
+ #define qov_seekable ov_seekable
+ #define qov_pcm_seek ov_pcm_seek
+ 
+-#endif // VORBISLIB_RUNTIME
+-
+ /*
+ * SNDOGG_Shutdown
+ */
+ void SNDOGG_Shutdown( bool verbose )
+ {
+-#ifdef VORBISLIB_RUNTIME
+-	if( vorbisLibrary )
+-		trap_UnloadLibrary( &vorbisLibrary );
+-#endif
+ }
+ 
+ /*
+@@ -87,11 +47,6 @@ void SNDOGG_Shutdown( bool verbose )
+ */
+ void SNDOGG_Init( bool verbose )
+ {
+-#ifdef VORBISLIB_RUNTIME
+-	if( vorbisLibrary )
+-		SNDOGG_Shutdown( verbose );
+-	vorbisLibrary = trap_LoadLibrary( LIBVORBISFILE_LIBNAME, oggvorbisfuncs );
+-#endif
+ }
+ 
+ //=============================================================================
+@@ -166,11 +121,6 @@ sfxcache_t *SNDOGG_Load( sfx_t *s )
+ 	assert( s && s->name[0] );
+ 	assert( !s->cache );
+ 
+-#ifdef VORBISLIB_RUNTIME
+-	if( !vorbisLibrary )
+-		return NULL;
+-#endif
+-
+ 	trap_FS_FOpenFile( s->name, &filenum, FS_READ );
+ 	if( !filenum )
+ 		return NULL;
+@@ -277,10 +227,6 @@ bool SNDOGG_OpenTrack( bgTrack_t *track, bool *delay )
+ 	OggVorbis_File *vf;
+ 	ov_callbacks callbacks = { ovcb_read, ovcb_seek, ovcb_close, ovcb_tell };
+ 
+-#ifdef VORBISLIB_RUNTIME
+-	if( !vorbisLibrary )
+-		return false;
+-#endif
+ 	if( delay )
+ 		*delay = false;
+ 	if( !track )
+diff -ruNp warsow_21_sdk/source/source/tv_server/CMakeLists.txt warsow/source/tv_server/CMakeLists.txt
+--- warsow_21_sdk/source/source/tv_server/CMakeLists.txt	Sat Mar 26 21:22:10 2016
++++ warsow/source/tv_server/CMakeLists.txt	Fri May 17 14:43:39 2019
+@@ -47,7 +47,7 @@ file(GLOB TV_SERVER_SOURCES
+     "tv_module/*.c"
+ )
+ 
+-if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
++if (WIN32)
+     file(GLOB TV_SERVER_PLATFORM_SOURCES 
+         "../win32/win_fs.c"
+         "../win32/win_net.c"
+@@ -60,7 +60,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+         "../win32/conproc.c"
+     )
+ 
+-    set(TV_SERVER_PLATFORM_LIBRARIES "ws2_32.lib" "winmm.lib")
++    set(TV_SERVER_PLATFORM_LIBRARIES ws2_32.lib winmm.lib)
+     set(TV_SERVER_BINARY_TYPE WIN32)
+ else()
+     file(GLOB TV_SERVER_PLATFORM_SOURCES 
+@@ -74,7 +74,12 @@ else()
+         "../null/sys_vfs_null.c"
+     )
+ 
+-    set(TV_SERVER_PLATFORM_LIBRARIES "pthread" "dl" "m")
++    if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
++        set(TV_SERVER_PLATFORM_LIBRARIES pthread dl m)
++    else()
++        set(TV_SERVER_PLATFORM_LIBRARIES pthread m)
++    endif()
++
+     set(TV_SERVER_BINARY_TYPE "")
+ endif()
+ 
+@@ -82,4 +87,4 @@ add_executable(${QFUSION_TVSERVER_NAME} ${TV_SERVER_BI
+ target_link_libraries(${QFUSION_TVSERVER_NAME} PRIVATE ${CURL_LIBRARY} ${ZLIB_LIBRARY} ${TV_SERVER_PLATFORM_LIBRARIES})
+ qf_set_output_dir(${QFUSION_TVSERVER_NAME} "")
+ 
+-set_target_properties(${QFUSION_TVSERVER_NAME} PROPERTIES COMPILE_DEFINITIONS "DEDICATED_ONLY;TV_SERVER_ONLY;TV_MODULE_HARD_LINKED")
+\ No newline at end of file
++set_target_properties(${QFUSION_TVSERVER_NAME} PROPERTIES COMPILE_DEFINITIONS "DEDICATED_ONLY;TV_SERVER_ONLY;TV_MODULE_HARD_LINKED")
+diff -ruNp warsow_21_sdk/source/source/unix/unix_fs.c warsow/source/unix/unix_fs.c
+--- warsow_21_sdk/source/source/unix/unix_fs.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/unix/unix_fs.c	Fri May 17 14:43:39 2019
+@@ -37,8 +37,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ #include "../android/android_sys.h"
+ #endif
+ 
+-// Mac OS X and FreeBSD don't know the readdir64 and dirent64
+-#if ( defined (__FreeBSD__) || defined (__ANDROID__) || !defined(_LARGEFILE64_SOURCE) )
++// I am sure readdir64 and dirent64 are Linux-specific.
++#if ( !defined (__linux__) || !defined(_LARGEFILE64_SOURCE) )
+ #define readdir64 readdir
+ #define dirent64 dirent
+ #endif
+diff -ruNp warsow_21_sdk/source/source/unix/unix_sys.c warsow/source/unix/unix_sys.c
+--- warsow_21_sdk/source/source/unix/unix_sys.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/unix/unix_sys.c	Fri May 17 14:43:39 2019
+@@ -24,12 +24,12 @@ FIXME:  This will be remidied once a native Mac port i
+ #if defined ( __APPLE__ ) && !defined ( DEDICATED_ONLY )
+ #include <SDL.h>
+ #include <CoreFoundation/CoreFoundation.h>
+-#include <sys/param.h>
+ #endif
+ 
+ #include <signal.h>
+ #include <stdlib.h>
+ #include <limits.h>
++#include <sys/param.h>
+ #include <sys/time.h>
+ #include <sys/types.h>
+ #include <unistd.h>
+@@ -43,14 +43,10 @@ FIXME:  This will be remidied once a native Mac port i
+ #include <errno.h>
+ #include <locale.h>
+ 
+-#if defined ( __FreeBSD__ )
+-#include <machine/param.h>
+-#endif
+-
+ #include "../qcommon/qcommon.h"
+ #include "glob.h"
+ 
+-#if !defined(USE_SDL2) || defined(DEDICATED_ONLY)
++#if defined(DEDICATED_ONLY)
+ 
+ cvar_t *nostdout;
+ bool nostdout_backup_val = false;
+@@ -224,7 +220,7 @@ void Sys_SendKeyEvents( void )
+ 	sys_frame_time = Sys_Milliseconds();
+ }
+ 
+-#endif // !defined(USE_SDL2) || defined(DEDICATED_ONLY)
++#endif // defined(DEDICATED_ONLY)
+ 
+ #ifndef __APPLE__
+ /*
+@@ -287,7 +283,7 @@ const char *Sys_GetPreferredLanguage( void )
+ 	return Q_strlwr( lang );
+ }
+ 
+-#if !defined(USE_SDL2) || defined(DEDICATED_ONLY)
++#if defined(DEDICATED_ONLY)
+ 
+ /*
+ * Sys_AcquireWakeLock
+@@ -354,4 +350,4 @@ int main( int argc, char **argv )
+ #endif
+ }
+ 
+-#endif // !defined(USE_SDL2) || defined(DEDICATED_ONLY)
++#endif // defined(DEDICATED_ONLY)
+diff -ruNp warsow_21_sdk/source/source/win32/win_sys.c warsow/source/win32/win_sys.c
+--- warsow_21_sdk/source/source/win32/win_sys.c	Sat Mar 26 21:22:10 2016
++++ warsow/source/win32/win_sys.c	Fri May 17 14:43:39 2019
+@@ -37,7 +37,7 @@ QF_DLL_EXPORT DWORD NvOptimusEnablement = 0x00000001;
+ QF_DLL_EXPORT int AmdPowerXpressRequestHighPerformance = 1;
+ #endif
+ 
+-#if !defined(USE_SDL2) || defined(DEDICATED_ONLY)
++#if defined(DEDICATED_ONLY)
+ 
+ int starttime;
+ int ActiveApp;
+@@ -200,7 +200,7 @@ void Sys_SendKeyEvents( void )
+ 	sys_frame_time = timeGetTime(); // FIXME: should this be at start?
+ }
+ 
+-#endif // !defined(USE_SDL2) || defined(DEDICATED_ONLY)
++#endif // defined(DEDICATED_ONLY)
+ 
+ /*
+ * Sys_IsBrowserAvailable
+@@ -282,7 +282,7 @@ const char *Sys_GetPreferredLanguage( void )
+ 	return Q_strlwr( lang );
+ }
+ 
+-#if !defined(USE_SDL2) || defined(DEDICATED_ONLY)
++#if defined(DEDICATED_ONLY)
+ 
+ /*
+ * Sys_AcquireWakeLock
+@@ -513,4 +513,4 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPr
+ 	return TRUE;
+ }
+ 
+-#endif // !defined(USE_SDL2) || defined(DEDICATED_ONLY)
++#endif // defined(DEDICATED_ONLY)
