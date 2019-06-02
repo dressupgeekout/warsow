@@ -243,6 +243,7 @@ void Com_Printf( const char *format, ... )
 
 	// also echo to debugging console
 	Sys_ConsoleOutput( msg );
+	fprintf(stderr, msg);
 
 	Con_Print( msg );
 
