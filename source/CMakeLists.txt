@@ -117,9 +117,9 @@ else()
 endif()
 
 if (UNIX)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-unused-function -fvisibility=hidden -Winvalid-pch -Wpedantic -std=gnu11")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-unused-function -fvisibility=hidden -Winvalid-pch -std=gnu11")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-function -fvisibility=hidden -Winvalid-pch -Wpedantic -std=c++11")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-function -fvisibility=hidden -Winvalid-pch -std=c++11")
 endif()
 
 # Linux-only specific settings
