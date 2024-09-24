@@ -21,6 +21,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "qcommon.h"
 #include "cm_local.h"
+#include "cmodel.h"
+
+/* Global vars. */
+int c_pointcontents;
+int c_traces;
+int c_brush_traces;
 
 /*
 * CM_InitBoxHull

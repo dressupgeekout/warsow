@@ -26,7 +26,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 tv_module_locals_t tvm;
 
-cvar_t *developer;
 cvar_t *tv_chasemode;
 
 //======================================================================
