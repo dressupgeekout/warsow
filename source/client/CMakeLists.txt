@@ -132,11 +132,12 @@ else()
             "../sdl/sdl_client.c"
         )
 
+        set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} pthread m rt)
+
         if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-            set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} pthread m dl rt)
-        else()
-            set(CLIENT_PLATFORM_LIBRARIES ${SDL2_LIBRARY} pthread m)
+          list(APPEND CLIENT_PLATFORM_LIBRARIES dl)
         endif()
+
     set(CLIENT_BINARY_TYPE "")
 
     set(BUNDLE_RESOURCES "")
